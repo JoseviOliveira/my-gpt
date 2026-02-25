@@ -33,7 +33,7 @@ export HF_HUB_CACHE="$COQUI_TTS_CACHE_DIR"
 cd "$APP_DIR"
 
 # Load unified environment config (optional)
-[[ -f ./.chat_env ]] && . ./.chat_env
+[[ -f ./.chat.conf ]] && . ./.chat.conf
 
 apply_eco_profile() {
   export OLLAMA_NUM_PARALLEL="${ECO_OLLAMA_NUM_PARALLEL:-1}"
@@ -284,29 +284,8 @@ stop_ollama() {
     rm -f "$OLLAMA_PIDFILE"
   fi
 
-  # Fallback: also stop unmanaged local `ollama serve` processes.
-  local pids
-  pids="$(pgrep -f '(\/|^)ollama[[:space:]]+serve' 2>/dev/null || true)"
-  if [[ -n "$pids" ]]; then
-    for p in ${(f)pids}; do
-      kill "$p" 2>/dev/null || true
-    done
-    sleep 1
-    pids="$(pgrep -f '(\/|^)ollama[[:space:]]+serve' 2>/dev/null || true)"
-    if [[ -n "$pids" ]]; then
-      for p in ${(f)pids}; do
-        kill -9 "$p" 2>/dev/null || true
-      done
-    fi
-    killed_any=1
-  fi
-
   if curl -fsS "${OLLAMA_URL}/api/tags" >/dev/null 2>&1; then
-    if [[ $killed_any -eq 1 ]]; then
-      service_line "$action" "$service" "warn" "still running (external manager)"
-    else
-      service_line "$action" "$service" "warn" "running (not managed by script)"
-    fi
+    service_line "$action" "$service" "warn" "running (not managed by this repo)"
   else
     service_line "$action" "$service" "stopped" "stopped"
   fi
@@ -360,9 +339,6 @@ stop_flask() {
     fi
     killed_any=1
   fi
-  # 3) Fallback pattern (case-insensitive), in case port changed
-  pkill -if "app.py" 2>/dev/null && killed_any=1 || true
-
   # Wait until port is free
   wait_port_free 10 || true
 

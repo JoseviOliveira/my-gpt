@@ -39,7 +39,7 @@ def _load_env_file(path: Path) -> None:
 
 
 def _configure_logging() -> None:
-    _load_env_file(ROOT_DIR / ".chat_userconf")
+    _load_env_file(ROOT_DIR / ".chat.conf")
     os.environ.setdefault("LOG_LEVEL", "DEBUG")
 
     root_logger = logging.getLogger()

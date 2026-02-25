@@ -1,7 +1,7 @@
 # macOS
 .DS_Store
 .chat_env
-.chat_userconf
+.chat.conf
 .chat_portconf
 nohup.out
 

@@ -46,7 +46,7 @@
   <main class="docs-content">
     <header class="docs-header">
       <h1>Installation Guide</h1>
-      <p>Set up the local-chat stack on macOS (Ollama + Flask UI + HTTPS via Caddy + optional speech).</p>
+      <p>Set up the my-gpt stack on macOS (Ollama + Flask UI + HTTPS via Caddy + optional speech).</p>
     </header>
 
     <section class="docs-section">
@@ -73,12 +73,15 @@
     <section class="docs-section">
       <h2>Quick Start (macOS)</h2>
       <pre><code>brew install git python@3.11 caddy jq espeak-ng
-mkdir -p ~/local-chat
-cd ~/local-chat
-# Copy the repo contents into this folder
-python3 -m venv chat_env
+git clone https://github.com/JoseviOliveira/my-gpt.git
+cd my-gpt
+python3.11 -m venv chat_env
+source ./chat_env/bin/activate
 ./chat_env/bin/pip install --upgrade pip
 ./chat_env/bin/pip install -r requirements.txt
+
+# confirm expected interpreter
+python --version   # should be 3.11.x
 
 ollama serve &
 ollama pull gpt-oss:20b
@@ -87,17 +90,18 @@ ollama pull magistral:24b
 
 ./scripts/run.sh start
 # open http://127.0.0.1:4200</code></pre>
-      <p class="docs-note">The <code>scripts/run.sh</code> helper expects the repo at <code>~/local-chat</code>. Update the script if you install elsewhere.</p>
+      <p class="docs-note">If <code>python3.11</code> is not available, install it with Homebrew first. Using Python 3.9 can break dependency installation.</p>
     </section>
 
     <section class="docs-section">
       <h2>Configure Users and Port</h2>
-      <p>Create <code>.chat_userconf</code> in the repo root (used by <code>scripts/run.sh</code>):</p>
+      <p>Create <code>.chat.conf</code> in the repo root (used by <code>scripts/run.sh</code>):</p>
       <pre><code>export APP_USER="yourname"
 export APP_PASS="yourpassword"
 # Optional multi-user list:
 export APP_USERS="yourname:yourpassword,guest:guest"
 export APP_GUEST_USER="guest"
+export CHAT_PORT=4200
 
 export MODEL="gpt-oss:20b"
 export SUMMARY_MODEL="gpt-oss:20b"
@@ -110,17 +114,16 @@ export NON_ADMIN_ALLOWED_MODES="fast,normal"
 export NON_ADMIN_MODEL_ALLOWLIST="deepseek-r1:8b,gemma3:4b,magistral:24b"
 export NON_ADMIN_FAST_MODEL="deepseek-r1:8b"
 export NON_ADMIN_NORMAL_MODEL="gemma3:4b"</code></pre>
-      <p>Configure the port in <code>.chat_userconf</code> if you want something other than 4200:</p>
+      <p>Configure the port in <code>.chat.conf</code> if you want something other than 4200:</p>
       <pre><code>export CHAT_PORT=4200</code></pre>
     </section>
 
     <section class="docs-section">
       <h2>Run the Server</h2>
-      <pre><code>cd ~/local-chat
-./scripts/run.sh start
+      <pre><code>./scripts/run.sh start
 ./scripts/run.sh status
 ./scripts/run.sh stop</code></pre>
-      <p>The script sources <code>.chat_userconf</code>, then orchestrates the full stack: it ensures Ollama is running (and pulls models if missing), starts the Flask app, and brings Caddy up or down when enabled. Logs are written to <code>log/server.out.log</code>, with separate logs for Caddy and Ollama in <code>log/</code>.</p>
+      <p>The script sources <code>.chat.conf</code>, then orchestrates the full stack: it ensures Ollama is running (and pulls models if missing), starts the Flask app, and brings Caddy up or down when enabled. Logs are written to <code>log/server.out.log</code>, with separate logs for Caddy and Ollama in <code>log/</code>.</p>
       <ul>
         <li><strong>Start:</strong> Use <code>start</code> to launch in the background; it should return immediately.</li>
         <li><strong>Status:</strong> <code>status</code> reports whether the service is running and which port is bound.</li>
@@ -135,7 +138,7 @@ export NON_ADMIN_NORMAL_MODEL="gemma3:4b"</code></pre>
       <p>Eco mode reduces GPU/CPU pressure by preferring smaller models and limiting Ollama concurrency.</p>
       <ul>
         <li>Run once: <code>./scripts/run.sh --eco start</code></li>
-        <li>Always on: set <code>ECO_MODE=1</code> in <code>.chat_userconf</code></li>
+        <li>Always on: set <code>ECO_MODE=1</code> in <code>.chat.conf</code></li>
         <li>When eco is active, Settings shows <strong>server mode eco</strong>.</li>
       </ul>
     </section>
@@ -166,8 +169,8 @@ export TTS_MODE="browser"   # or "coqui"</code></pre>
         <li><strong>Server TTS:</strong> Neural text-to-speech runs in-process. <code>espeak-ng</code> helps with phonemizer support.</li>
       </ul>
       <p>If you use an external helper script, set the following:</p>
-      <pre><code>export COQUI_TTS_PY="$HOME/local-chat/tts_env/bin/python"
-export COQUI_TTS_SCRIPT="$HOME/local-chat/scripts/tts_synthesize.py"</code></pre>
+      <pre><code>export COQUI_TTS_PY="$HOME/my-gpt/tts_env/bin/python"
+export COQUI_TTS_SCRIPT="$HOME/my-gpt/scripts/tts_synthesize.py"</code></pre>
     </section>
 
     <section class="docs-section">
@@ -177,7 +180,7 @@ export COQUI_TTS_SCRIPT="$HOME/local-chat/scripts/tts_synthesize.py"</code></pre
         <li>Forward ports 80 and 443 to your Mac.</li>
         <li>Edit <code>deploy/Caddyfile</code> with your domain.</li>
         <li>Run Caddy:
-          <pre><code>cd ~/local-chat
+          <pre><code>cd ~/my-gpt
 caddy run --config deploy/Caddyfile</code></pre>
         </li>
       </ol>
@@ -186,17 +189,17 @@ caddy run --config deploy/Caddyfile</code></pre>
     <section class="docs-section">
       <h2>Auto-Start (Optional)</h2>
       <p>The helper <code>deploy/launchd-run.sh</code> is designed to be called by a LaunchAgent. Create a LaunchAgent that runs it at login.</p>
-      <pre><code>cat &gt; ~/Library/LaunchAgents/local-chat.plist &lt;&lt;'PLIST'
+      <pre><code>cat &gt; ~/Library/LaunchAgents/my-gpt.plist &lt;&lt;'PLIST'
 &lt;?xml version="1.0" encoding="UTF-8"?&gt;
 &lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
  "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;
 &lt;plist version="1.0"&gt;
 &lt;dict&gt;
   &lt;key&gt;Label&lt;/key&gt;
-  &lt;string&gt;local-chat&lt;/string&gt;
+  &lt;string&gt;my-gpt&lt;/string&gt;
   &lt;key&gt;ProgramArguments&lt;/key&gt;
   &lt;array&gt;
-    &lt;string&gt;/Users/USER/local-chat/deploy/launchd-run.sh&lt;/string&gt;
+    &lt;string&gt;/Users/USER/my-gpt/deploy/launchd-run.sh&lt;/string&gt;
   &lt;/array&gt;
   &lt;key&gt;RunAtLoad&lt;/key&gt;
   &lt;true/&gt;
@@ -204,7 +207,7 @@ caddy run --config deploy/Caddyfile</code></pre>
 &lt;/plist&gt;
 PLIST
 
-launchctl load ~/Library/LaunchAgents/local-chat.plist</code></pre>
+launchctl load ~/Library/LaunchAgents/my-gpt.plist</code></pre>
       <p class="docs-note">Replace <code>USER</code> with your macOS username.</p>
     </section>
 
@@ -213,7 +216,7 @@ launchctl load ~/Library/LaunchAgents/local-chat.plist</code></pre>
       <ul>
         <li>Open <code>http://127.0.0.1:4200</code> and log in.</li>
         <li>Run a test prompt and confirm streaming output.</li>
-        <li>Check the health endpoint: <code>curl -fsS http://127.0.0.1:4200/health</code></li>
+        <li>Check the health endpoint: <code>curl -fsS -u yourname:yourpassword http://127.0.0.1:4200/health</code></li>
         <li>Open the docs at <code>/docs/</code>.</li>
       </ul>
     </section>
@@ -222,9 +225,9 @@ launchctl load ~/Library/LaunchAgents/local-chat.plist</code></pre>
       <h2>GPU KPI (macOS, Optional)</h2>
       <p>The header GPU KPI reads <code>powermetrics</code> on macOS. To allow the server to access it without prompting every time, add a sudoers rule:</p>
       <pre><code>sudo sh -c 'printf "%s\n" \
-"# Allow local-chat to read GPU usage without a password" \
+"# Allow my-gpt to read GPU usage without a password" \
 "YOUR_USER ALL=(root) NOPASSWD: /usr/bin/powermetrics -n 1 --samplers gpu_power" \
-> /etc/sudoers.d/local-chat-powermetrics'</code></pre>
+> /etc/sudoers.d/my-gpt-powermetrics'</code></pre>
       <p>Replace <code>YOUR_USER</code> with your macOS username. Restart the server afterward.</p>
     </section>
 

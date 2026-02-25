@@ -8,7 +8,7 @@ APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$APP_DIR"
 
 # Load unified environment config (if present)
-[[ -f ./.chat_env ]] && . ./.chat_env
+[[ -f ./.chat.conf ]] && . ./.chat.conf
 
 # Colored output
 RED='\033[0;31m'
