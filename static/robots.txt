@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /docs/
+Allow: /css/
+Allow: /js/
+Allow: /icons/
+Allow: /manifest.webmanifest
+Allow: /favicon.ico
+Disallow: /
+Sitemap: https://josevi.ddns.net/sitemap.xml

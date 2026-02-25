@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <title>User Guide</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← Back to app</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Index</a>
+      <a href="/docs/user.html" class="active">User Guide</a>
+      <a href="/docs/architecture.html">Architecture</a>
+      <a href="/docs/engineering.html">Engineering</a>
+      <a href="/docs/installation.html">Installation</a>
+      <a href="/docs/audience.html">Audience</a>
+      <a href="/docs/handwrite.html">About</a>
+      <a href="/docs/benchmark.html">Benchmarks</a>
+      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
+
+    </div>
+  </nav>
+
+  <main class="docs-content">
+    <header class="docs-header">
+      <h1>User Guide</h1>
+      <p>Practical how-to for daily use, based on the current codebase.</p>
+    </header>
+
+    <section class="docs-section">
+      <h2>Overview</h2>
+      <p>This app is a local-first assistant. The browser UI is served by your own Flask server and talks to local models through Ollama. Speech features can run in the browser or on the server.</p>
+      <p>Chats, audio, and analytics stay on your machine by default. Caddy provides the HTTPS gateway so the UI can be used securely from a phone while Ollama stays bound to localhost.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>What the app includes</h2>
+      <p>This is the current scope of the product:</p>
+      <ul>
+        <li><strong>Core stack:</strong> Flask backend + SPA frontend with streaming replies and a Stop control.</li>
+        <li><strong>Local inference:</strong> Ollama runs models on-device with per-mode selection and an allowlist.</li>
+        <li><strong>Sessions + metadata:</strong> Chats are saved to JSON with AI-generated title and summary.</li>
+        <li><strong>Authenticated access:</strong> All API routes require login tokens; the docs remain public.</li>
+        <li><strong>Role-based access:</strong> admin, normal users, and a read-only guest with muted actions.</li>
+        <li><strong>Server protection:</strong> per-user daily prompt caps, per-chat caps, max chat count, GPU guard, and polling limits.</li>
+        <li><strong>Speech pipeline:</strong> browser STT/TTS plus server neural STT/TTS with fallbacks and user restrictions.</li>
+        <li><strong>Analytics + stats:</strong> dashboard with filters, maps, charts, tables, and responsive layout adjustments.</li>
+        <li><strong>UI system:</strong> consistent headers, compact pills, unified toasts, light/dark themes, and responsive layout.</li>
+        <li><strong>Ops + deployment:</strong> scripts/run.sh, launchd helpers, Caddy TLS proxy, eco mode, logs.</li>
+        <li><strong>Docs set:</strong> architecture, installation, benchmarks, performance, audience, and narrative "about".</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Getting Started</h2>
+      <ul>
+        <li><strong>Login:</strong> Use the splash screen to sign in. Tokens are stored in your browser and used for API calls.</li>
+        <li><strong>Sidebar:</strong> Toggle the sidebar from the top-left. On desktop you can resize it by dragging the right edge.</li>
+        <li><strong>Welcome tour:</strong> Run the tour from Settings -> Account &amp; tools -> Welcome tour.</li>
+        <li><strong>Docs:</strong> Open the docs from Settings -> Account &amp; tools -> Resources.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Benchmark Workflow</h2>
+      <p>Use benchmark pages as a three-step flow: baseline report, alternative interpretation, then live monitor when a run is active.</p>
+      <ol>
+        <li><strong>Read the primary report:</strong> Open <code>/docs/benchmark.html</code> for the canonical benchmark summary and model ranking.</li>
+        <li><strong>Compare with alternative analysis:</strong> Open <code>/docs/benchmark_claude.html</code> to cross-check conclusions using a different KPI weighting and chart style.</li>
+        <li><strong>Track an active run live:</strong> Open <code>/docs/benchmark_monitor.html</code> for real-time progress, telemetry, and the latest executed task.</li>
+      </ol>
+      <p><strong>When to use which page:</strong></p>
+      <ul>
+        <li><strong>Need final decisions:</strong> Start with <code>benchmark.html</code>.</li>
+        <li><strong>Need another lens:</strong> Compare with <code>benchmark_claude.html</code>.</li>
+        <li><strong>Need operational visibility:</strong> Use <code>benchmark_monitor.html</code> during execution.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Access Levels and Limits</h2>
+      <p>These limits keep the app responsive when many people connect at once. They protect the GPU and avoid long queues while still letting everyone explore the app safely.</p>
+      <p><strong>Guest</strong> — a safe, read-only account for public access and demos.</p>
+      <ul>
+        <li>Settings shows a <em>read-only guest</em> badge.</li>
+        <li>Browse chats and open sessions only; no create, rename, pin, delete, or send.</li>
+        <li>STT/TTS stay browser-only; server speech modes are locked.</li>
+      </ul>
+      <p><strong>Normal users</strong> — full chat access with guardrails to keep the server smooth.</p>
+      <ul>
+        <li>Prompt caps apply per user (daily total + per-chat length) and per-account chat count.</li>
+        <li>Only Fast and Normal are available; Deep is disabled to avoid long runs.</li>
+        <li>The model list is limited to deepseek-r1:8b, gemma3:4b, and magistral:24b; defaults are Fast=deepseek-r1:8b and Normal=gemma3:4b.</li>
+        <li>When GPU utilization is high, Send is disabled and a short toast explains the limit.</li>
+      </ul>
+      <p><strong>Admins</strong> — unrestricted access for owners.</p>
+      <ul>
+        <li>Full access to modes, models, and settings with no prompt or chat caps.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Conversation Basics</h2>
+      <p>Type in the composer and press <strong>Send</strong> or <strong>Enter</strong>. Use <strong>Shift+Enter</strong> for line breaks. The composer grows with your text.</p>
+      <ul>
+        <li><strong>Streaming:</strong> Replies arrive progressively; the Send button becomes Stop to cancel.</li>
+        <li><strong>Metrics line:</strong> After each response you see model name, token counts, speed, elapsed time, and a speaker that starts audio playback.</li>
+        <li><strong>Summary line:</strong> A short summary will appear under the title after the server generates metadata.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Modes and Models</h2>
+      <p>Use the Fast / Normal / Deep buttons in the header to control how detailed the response should be.</p>
+      <ul>
+        <li><strong>Per-mode models:</strong> Assign a model to each mode in Settings -> Models.</li>
+        <li><strong>Allowlist:</strong> The backend only accepts models in its allowlist; unsupported names are ignored.</li>
+        <li><strong>Tooltips:</strong> Hover a mode button to see which model is assigned.</li>
+        <li><strong>Non-admin limits:</strong> Some accounts only see Fast/Normal modes and a small model list.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Sessions and History</h2>
+      <ul>
+        <li><strong>New chat:</strong> Click "+ New chat" to start a fresh session.</li>
+        <li><strong>Chat list:</strong> Select a title to load an older session.</li>
+        <li><strong>Options menu:</strong> Use the ⋮ menu on the active chat to pin/unpin, rename, or delete.</li>
+        <li><strong>Auto metadata:</strong> The server generates titles and summaries after the conversation is idle.</li>
+        <li><strong>Storage:</strong> Sessions are stored as JSON files under <code>chats/&lt;user&gt;/</code>.</li>
+        <li><strong>Guest read-only:</strong> Guests can browse sessions but cannot change them.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Speech Input (STT)</h2>
+      <ul>
+        <li><strong>Web mode:</strong> Uses the browser SpeechRecognition API. Click the mic to start/stop. A language toggle cycles EN/FR/ES when available.</li>
+        <li><strong>Server mode:</strong> Uses neural speech-to-text on the backend. Audio is recorded in the browser and sent to <code>/api/stt</code>.</li>
+        <li><strong>Modes:</strong> Switch STT mode in Settings -> Speech input.</li>
+        <li><strong>Guest access:</strong> Guests are limited to browser-only STT.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Speech Output (TTS)</h2>
+      <ul>
+        <li><strong>Speaker button:</strong> Click the speaker icon under a response to play audio.</li>
+        <li><strong>Web mode:</strong> Uses the browser SpeechSynthesis API.</li>
+        <li><strong>Server mode:</strong> Uses neural text-to-speech with chunked streaming for long replies.</li>
+        <li><strong>Modes:</strong> Switch TTS mode in Settings -> Speech output.</li>
+        <li><strong>Guest access:</strong> Guests are limited to browser-only TTS.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Appearance and Settings</h2>
+      <ul>
+        <li><strong>Theme:</strong> Light and Dark mode.</li>
+        <li><strong>Font:</strong> Choose between available font stacks.</li>
+        <li><strong>Text size:</strong> Small, medium, or large.</li>
+        <li><strong>Server mode:</strong> The "server mode" row shows eco or performance based on the backend config.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Admin and Debug Tools</h2>
+      <ul>
+        <li><strong>Debug panel:</strong> Toggle in Settings -> Account &amp; tools -> Debug.</li>
+        <li><strong>Dashboard:</strong> Open <code>/dashboard</code> from Settings -> Account &amp; tools -> Dashboard (requires admin access).</li>
+        <li><strong>Logs:</strong> The debug panel mirrors console output for troubleshooting.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Keyboard Shortcuts</h2>
+      <ul>
+        <li><strong>Enter:</strong> Send message.</li>
+        <li><strong>Shift+Enter:</strong> New line in the composer.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Remote Access Notes</h2>
+      <p>If the app is exposed publicly, access still requires login for all API routes. The docs are public.</p>
+      <ul>
+        <li><strong>HTTPS:</strong> Caddy handles TLS termination for secure mobile access.</li>
+        <li><strong>Multi-device:</strong> Any device can log in with valid credentials and see its own sessions.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li><strong>Mic unavailable:</strong> The browser may block microphone access or not support SpeechRecognition.</li>
+        <li><strong>Server STT/TTS errors:</strong> Ensure neural speech-to-text and neural text-to-speech dependencies are installed and configured.</li>
+        <li><strong>No GPU gauge:</strong> The GPU widget appears only when the server reports utilization.</li>
+        <li><strong>Benchmark monitor looks stale:</strong> Reload the page and verify the backend benchmark APIs are reachable.</li>
+        <li><strong>Report/monitor mismatch:</strong> The monitor is live state; reports are post-run analysis snapshots.</li>
+        <li><strong>Limit reached:</strong> When you hit a cap, a short toast explains the restriction and the chat is not updated.</li>
+        <li><strong>401 responses:</strong> Log in again if tokens expire or the splash shows "Session expired".</li>
+      </ul>
+    </section>
+
+    <footer class="docs-footer">
+      <a href="/docs/index.html" class="docs-footer-prev">← Index</a>
+      <a href="/docs/architecture.html" class="docs-footer-next">Architecture →</a>
+    </footer>
+  </main>
+  <script src="/js/docs_theme.js"></script>
+</body>
+</html>

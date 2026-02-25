@@ -1,0 +1,56 @@
+# Robustness defaults for benchmark runs.
+# Override any value in benchmark/config_full.yaml.
+
+thermal:
+  # Base cooldowns applied after each request, by hardness tier.
+  cooldowns:
+    light: 2
+    medium: 5
+    heavy: 15
+    extreme: 30
+  # Fixed cooldown between models (seconds).
+  inter_model_cooldown: 90
+  # Small delay between chat turns (milliseconds).
+  inter_turn_delay_ms: 250
+  # Apply an extra cooldown every N requests to reduce thermal drift.
+  batch_cooldown_interval: 100
+  # Duration for the batch cooldown (seconds).
+  batch_cooldown_duration: 60
+  # Pause requests when GPU utilization exceeds this percentage.
+  gpu_temperature_guard: 50
+  # Poll interval for GPU guard checks (seconds).
+  gpu_guard_poll_sec: 3
+  # Max time to wait for GPU to drop below guard threshold (seconds).
+  gpu_guard_timeout_sec: 240
+  # HTTP timeout for GPU guard checks (seconds).
+  gpu_guard_http_timeout_sec: 8
+  # Soft ceiling for GPU temp logging/alerts (celsius).
+  max_gpu_temp_celsius: 85
+
+ollama:
+  # Hard timeout for an Ollama request (seconds).
+  request_timeout_seconds: 240
+  # Stream idle timeout: abort if no chunk arrives in this window (seconds).
+  stream_idle_timeout_seconds: 90
+  # Retries per request before marking it failed.
+  request_retries: 3
+  # Backoff between retries (seconds).
+  retry_backoff_seconds: 2
+  # After a failed request, wait this long then recheck GPU (seconds).
+  hang_gpu_wait_seconds: 30
+  # Command to restart Ollama after hang detection (optional).
+  restart_cmd: ""
+
+resources:
+  # Sampling interval for resource metrics during inference (seconds).
+  resource_sample_interval_sec: 5.0
+  # Disk I/O band thresholds (MB/s): [warning, critical].
+  disk_io_bands_mbps: [1, 5]
+  # GPU temperature band thresholds (°C): [normal, high, very_hot, critical].
+  gpu_temp_bands: [50, 70, 85, 95]
+  # GPU utilization band thresholds (%): [high, saturated].
+  gpu_util_bands: [80, 95]
+  # CPU utilization band thresholds (%): [ideal, normal, watch].
+  cpu_util_bands: [20, 50, 70]
+  # Store raw samples (disabled by default).
+  store_raw_samples: false

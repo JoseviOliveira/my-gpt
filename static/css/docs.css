@@ -1,0 +1,476 @@
+/* ============================================================
+   DOCS: Shared styles for documentation pages
+   ============================================================ */
+
+/* Reset app-shell constraints for docs pages */
+html.docs-page,
+html.docs-page body {
+  height: auto;
+  min-height: 100vh;
+  overflow: auto;
+  overflow-x: hidden;
+}
+
+/* Sticky navigation bar */
+.docs-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px clamp(16px, 4vw, 32px);
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.docs-nav::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -18px;
+  height: 18px;
+  background: linear-gradient(180deg, var(--panel) 0%, rgba(0,0,0,0) 100%);
+  pointer-events: none;
+}
+
+/* Offset content to prevent nav overlap */
+.docs-content {
+  padding-top: 80px;
+}
+
+.docs-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.docs-nav-brand:hover {
+  opacity: 0.8;
+}
+
+.docs-nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+}
+
+.docs-nav-links a {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background .2s ease, color .2s ease;
+  white-space: nowrap;
+}
+
+.docs-nav-links a:hover {
+  background: var(--item-hover);
+  color: var(--ink);
+}
+
+.docs-nav-links a.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.docs-nav-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-ink);
+  background: var(--accent);
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: opacity .2s ease;
+}
+
+.docs-nav-back:hover {
+  opacity: 0.85;
+}
+
+/* Main content wrapper */
+.docs-content {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 64px) clamp(16px, 4vw, 32px);
+  padding-top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 4vw, 32px);
+}
+
+.docs-section a {
+  text-decoration: none;
+}
+
+/* Page header */
+.docs-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.docs-tag {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.docs-header h1 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 42px);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+/* Content sections */
+.docs-section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: clamp(18px, 3vw, 28px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.docs-section h2 {
+  margin: 0;
+  font-size: clamp(18px, 2.5vw, 24px);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.docs-section p {
+  margin: 0;
+  color: var(--toggle-ink);
+  line-height: 1.7;
+  font-size: clamp(15px, 2vw, 17px);
+}
+
+.docs-section ul,
+.docs-section ol {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--toggle-ink);
+  line-height: 1.65;
+  font-size: clamp(15px, 2vw, 17px);
+}
+
+.docs-section li {
+  font-size: inherit;
+}
+
+.docs-section code {
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  font-size: 0.9em;
+}
+
+.docs-section pre {
+  margin: 0;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.docs-section pre code {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+/* Benchmark helpers */
+.docs-table-wrap {
+  width: 100%;
+  overflow: auto;
+}
+
+.docs-section h3 {
+  margin: 0;
+  font-size: clamp(16px, 2vw, 20px);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.docs-section h4 {
+  margin: 0;
+  font-size: clamp(15px, 1.8vw, 18px);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.bench-score-table th:not(:first-child),
+.bench-score-table td:not(:first-child) {
+  text-align: center;
+}
+
+.bench-score-table th[colspan] {
+  text-align: center;
+}
+
+.conclusion-box {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.badge,
+.recommendation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--pill-border);
+  background: var(--pill);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.model-verdict {
+  font-style: italic;
+  color: var(--muted);
+}
+
+.radar-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: center;
+}
+
+.radar-echart {
+  width: 100%;
+  max-width: 520px;
+  height: 420px;
+  margin: 0 auto;
+}
+
+.radar-legend {
+  flex: 1;
+  min-width: 260px;
+}
+
+.radar-table {
+  min-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .radar-echart {
+    height: 320px;
+  }
+}
+
+/* Tables (minimal) */
+.docs-section table th {
+  text-align: left;
+  background: rgba(0, 0, 0, 0.04);
+  color: #3c3f46;
+}
+
+:root[data-theme="dark"] .docs-section table th {
+  color: #cbd5e1;
+}
+
+/* Tables */
+.docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.docs-table th,
+.docs-table td {
+  border: 1px solid var(--border);
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.docs-table th {
+  background: rgba(14, 165, 233, 0.08);
+  font-weight: 600;
+}
+
+/* Charts */
+.docs-chart {
+  margin: 12px 0;
+}
+
+.docs-chart h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.docs-chart-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.docs-chart-label {
+  width: 120px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.docs-chart-bar {
+  flex: 1;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  overflow: hidden;
+}
+
+.docs-chart-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #6366f1);
+  border-radius: 999px;
+}
+
+.docs-chart-value {
+  width: 70px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--toggle-ink);
+}
+
+/* Footer nav */
+.docs-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+}
+
+.docs-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .2s ease;
+}
+
+.docs-footer-prev {
+  color: var(--ink);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+}
+
+.docs-footer-prev:hover {
+  background: var(--item-hover);
+}
+
+.docs-footer-next {
+  color: var(--accent-ink);
+  background: var(--accent);
+  margin-left: auto;
+}
+
+.docs-footer-next:hover {
+  opacity: 0.85;
+}
+
+/* Callout boxes */
+.docs-callout {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* Note for older styles compatibility */
+.docs-note {
+  font-size: 13px;
+  color: var(--toggle-ink);
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .docs-nav {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .docs-nav-links {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+  
+  .docs-nav-back {
+    margin-left: auto;
+  }
+  
+  .docs-footer {
+    flex-direction: column;
+  }
+  
+  .docs-footer a {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .docs-footer-next {
+    margin-left: 0;
+  }
+}

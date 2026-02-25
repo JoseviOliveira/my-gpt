@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <title>Installation Guide</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← Back to app</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Index</a>
+      <a href="/docs/user.html">User Guide</a>
+      <a href="/docs/architecture.html">Architecture</a>
+      <a href="/docs/engineering.html">Engineering</a>
+      <a href="/docs/installation.html" class="active">Installation</a>
+      <a href="/docs/audience.html">Audience</a>
+      <a href="/docs/handwrite.html">About</a>
+      <a href="/docs/benchmark.html">Benchmarks</a>
+      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
+
+    </div>
+  </nav>
+
+  <main class="docs-content">
+    <header class="docs-header">
+      <h1>Installation Guide</h1>
+      <p>Set up the local-chat stack on macOS (Ollama + Flask UI + HTTPS via Caddy + optional speech).</p>
+    </header>
+
+    <section class="docs-section">
+      <h2>Overview</h2>
+      <p>The app runs fully on your machine. The browser UI is served by Flask, and inference is handled by Ollama. Speech features can run in-browser or on the server.</p>
+      <ul>
+        <li><strong>Local inference:</strong> Models run through Ollama on localhost.</li>
+        <li><strong>Single server:</strong> Flask serves the UI, docs, and API.</li>
+        <li><strong>HTTPS gateway:</strong> Caddy terminates TLS and exposes the app securely to mobile browsers.</li>
+        <li><strong>Local storage:</strong> Chat sessions and analytics are stored on disk.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Requirements (macOS)</h2>
+      <ul>
+        <li><strong>Python 3.11+:</strong> Used for the Flask server and speech modules.</li>
+        <li><strong>Ollama:</strong> Local LLM runtime (<a href="https://ollama.com/download" target="_blank">ollama.com</a>).</li>
+        <li><strong>Homebrew:</strong> For installing system packages.</li>
+        <li><strong>Required:</strong> <code>caddy</code> for HTTPS. <code>espeak-ng</code> is optional for server TTS.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Quick Start (macOS)</h2>
+      <pre><code>brew install git python@3.11 caddy jq espeak-ng
+mkdir -p ~/local-chat
+cd ~/local-chat
+# Copy the repo contents into this folder
+python3 -m venv chat_env
+./chat_env/bin/pip install --upgrade pip
+./chat_env/bin/pip install -r requirements.txt
+
+ollama serve &
+ollama pull gpt-oss:20b
+ollama pull gemma3:4b
+ollama pull magistral:24b
+
+./scripts/run.sh start
+# open http://127.0.0.1:4200</code></pre>
+      <p class="docs-note">The <code>scripts/run.sh</code> helper expects the repo at <code>~/local-chat</code>. Update the script if you install elsewhere.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Configure Users and Port</h2>
+      <p>Create <code>.chat_userconf</code> in the repo root (used by <code>scripts/run.sh</code>):</p>
+      <pre><code>export APP_USER="yourname"
+export APP_PASS="yourpassword"
+# Optional multi-user list:
+export APP_USERS="yourname:yourpassword,guest:guest"
+export APP_GUEST_USER="guest"
+
+export MODEL="gpt-oss:20b"
+export SUMMARY_MODEL="gpt-oss:20b"
+export APP_LOG_LEVEL="INFO"</code></pre>
+      <p>Optional non-admin limits (per user):</p>
+      <pre><code>export NON_ADMIN_DAILY_PROMPT_LIMIT=100
+export NON_ADMIN_CHAT_PROMPT_LIMIT=30
+export NON_ADMIN_CHAT_LIMIT=10
+export NON_ADMIN_ALLOWED_MODES="fast,normal"
+export NON_ADMIN_MODEL_ALLOWLIST="deepseek-r1:8b,gemma3:4b,magistral:24b"
+export NON_ADMIN_FAST_MODEL="deepseek-r1:8b"
+export NON_ADMIN_NORMAL_MODEL="gemma3:4b"</code></pre>
+      <p>Configure the port in <code>.chat_userconf</code> if you want something other than 4200:</p>
+      <pre><code>export CHAT_PORT=4200</code></pre>
+    </section>
+
+    <section class="docs-section">
+      <h2>Run the Server</h2>
+      <pre><code>cd ~/local-chat
+./scripts/run.sh start
+./scripts/run.sh status
+./scripts/run.sh stop</code></pre>
+      <p>The script sources <code>.chat_userconf</code>, then orchestrates the full stack: it ensures Ollama is running (and pulls models if missing), starts the Flask app, and brings Caddy up or down when enabled. Logs are written to <code>log/server.out.log</code>, with separate logs for Caddy and Ollama in <code>log/</code>.</p>
+      <ul>
+        <li><strong>Start:</strong> Use <code>start</code> to launch in the background; it should return immediately.</li>
+        <li><strong>Status:</strong> <code>status</code> reports whether the service is running and which port is bound.</li>
+        <li><strong>Stop:</strong> <code>stop</code> cleanly shuts down the server process.</li>
+        <li><strong>Logs:</strong> Tail <code>log/server.out.log</code> for startup errors, model load time, or auth issues.</li>
+      </ul>
+      <p>Open <code>http://127.0.0.1:4200</code> and log in using your credentials.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Eco Mode (Optional)</h2>
+      <p>Eco mode reduces GPU/CPU pressure by preferring smaller models and limiting Ollama concurrency.</p>
+      <ul>
+        <li>Run once: <code>./scripts/run.sh --eco start</code></li>
+        <li>Always on: set <code>ECO_MODE=1</code> in <code>.chat_userconf</code></li>
+        <li>When eco is active, Settings shows <strong>server mode eco</strong>.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Models and Ollama</h2>
+      <p>Ollama must be running and have the models you plan to use.</p>
+      <pre><code>ollama serve &
+ollama pull gpt-oss:20b
+ollama pull gemma3:4b
+ollama pull gemma3:12b
+ollama pull magistral:24b</code></pre>
+      <p>Optional environment variables:</p>
+      <pre><code>export OLLAMA_URL="http://127.0.0.1:11434"
+export MODEL="gpt-oss:20b"
+export SUMMARY_MODEL="gpt-oss:20b"
+export MODEL_EXTRA="gemma3:4b,gemma3:12b,magistral:24b"</code></pre>
+    </section>
+
+    <section class="docs-section">
+      <h2>Speech (Optional)</h2>
+      <p>Speech features are configurable via environment variables:</p>
+      <pre><code>export STT_MODE="browser"   # or "whisper"
+export TTS_MODE="browser"   # or "coqui"</code></pre>
+      <ul>
+        <li><strong>Browser STT/TTS:</strong> Uses the browser APIs and requires no extra setup.</li>
+        <li><strong>Server STT:</strong> Neural speech-to-text runs inside the Python environment and is installed via <code>requirements.txt</code>.</li>
+        <li><strong>Server TTS:</strong> Neural text-to-speech runs in-process. <code>espeak-ng</code> helps with phonemizer support.</li>
+      </ul>
+      <p>If you use an external helper script, set the following:</p>
+      <pre><code>export COQUI_TTS_PY="$HOME/local-chat/tts_env/bin/python"
+export COQUI_TTS_SCRIPT="$HOME/local-chat/scripts/tts_synthesize.py"</code></pre>
+    </section>
+
+    <section class="docs-section">
+      <h2>HTTPS with Caddy (Required)</h2>
+      <ol>
+        <li>Point your domain DNS to your public IP.</li>
+        <li>Forward ports 80 and 443 to your Mac.</li>
+        <li>Edit <code>deploy/Caddyfile</code> with your domain.</li>
+        <li>Run Caddy:
+          <pre><code>cd ~/local-chat
+caddy run --config deploy/Caddyfile</code></pre>
+        </li>
+      </ol>
+    </section>
+
+    <section class="docs-section">
+      <h2>Auto-Start (Optional)</h2>
+      <p>The helper <code>deploy/launchd-run.sh</code> is designed to be called by a LaunchAgent. Create a LaunchAgent that runs it at login.</p>
+      <pre><code>cat &gt; ~/Library/LaunchAgents/local-chat.plist &lt;&lt;'PLIST'
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;
+&lt;plist version="1.0"&gt;
+&lt;dict&gt;
+  &lt;key&gt;Label&lt;/key&gt;
+  &lt;string&gt;local-chat&lt;/string&gt;
+  &lt;key&gt;ProgramArguments&lt;/key&gt;
+  &lt;array&gt;
+    &lt;string&gt;/Users/USER/local-chat/deploy/launchd-run.sh&lt;/string&gt;
+  &lt;/array&gt;
+  &lt;key&gt;RunAtLoad&lt;/key&gt;
+  &lt;true/&gt;
+&lt;/dict&gt;
+&lt;/plist&gt;
+PLIST
+
+launchctl load ~/Library/LaunchAgents/local-chat.plist</code></pre>
+      <p class="docs-note">Replace <code>USER</code> with your macOS username.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Verify Everything</h2>
+      <ul>
+        <li>Open <code>http://127.0.0.1:4200</code> and log in.</li>
+        <li>Run a test prompt and confirm streaming output.</li>
+        <li>Check the health endpoint: <code>curl -fsS http://127.0.0.1:4200/health</code></li>
+        <li>Open the docs at <code>/docs/</code>.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>GPU KPI (macOS, Optional)</h2>
+      <p>The header GPU KPI reads <code>powermetrics</code> on macOS. To allow the server to access it without prompting every time, add a sudoers rule:</p>
+      <pre><code>sudo sh -c 'printf "%s\n" \
+"# Allow local-chat to read GPU usage without a password" \
+"YOUR_USER ALL=(root) NOPASSWD: /usr/bin/powermetrics -n 1 --samplers gpu_power" \
+> /etc/sudoers.d/local-chat-powermetrics'</code></pre>
+      <p>Replace <code>YOUR_USER</code> with your macOS username. Restart the server afterward.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li><strong>Ollama not ready:</strong> Check <code>ollama serve</code> and that models are pulled.</li>
+        <li><strong>401 errors:</strong> Confirm your <code>APP_USER</code>/<code>APP_PASS</code> or <code>APP_USERS</code> values.</li>
+        <li><strong>Speech errors:</strong> Install <code>espeak-ng</code> and confirm STT/TTS modes.</li>
+        <li><strong>Port in use:</strong> Change <code>CHAT_PORT</code> or stop the conflicting process.</li>
+      </ul>
+    </section>
+
+    <footer class="docs-footer">
+      <a href="/docs/engineering.html" class="docs-footer-prev">← Engineering</a>
+      <a href="/docs/audience.html" class="docs-footer-next">Audience →</a>
+    </footer>
+  </main>
+  <script src="/js/docs_theme.js"></script>
+</body>
+</html>

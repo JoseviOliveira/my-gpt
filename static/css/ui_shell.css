@@ -1,0 +1,313 @@
+/* Utility classes */
+.flex { display: flex; }
+.flex-1 { flex: 1 1 0%; min-height: 0; min-width: 0; }
+.flex-col { flex-direction: column; }
+.shrink-0 { flex-shrink: 0; }
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+
+/* ============================================================
+   APP SHELL: gpt-oss style full-viewport push sidebar
+   ============================================================ */
+.app-shell {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  height: 100dvh; /* iOS Safari dynamic viewport */
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Sidebar - full height, width-based show/hide */
+.app-sidebar {
+  width: 0;
+  min-width: 0;
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: width 1.0s cubic-bezier(0.4, 0, 0.2, 1),
+              min-width 1.0s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sidebar inner wrapper */
+.app-sidebar .side-wrap {
+  width: 100%;
+  min-width: 16rem;
+  flex-shrink: 0;
+  transform: translateX(-100%);
+  opacity: 0;
+  transition: transform 1.0s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 1.0s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sidebar open state */
+body.sidebar-open .app-sidebar {
+  width: 16rem;
+  min-width: 16rem;
+}
+
+body.sidebar-open .app-sidebar .side-wrap {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Main viewport container (header + content + footer) */
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Mobile: prevent content reflow when sidebar opens */
+@media (max-width: 900px) {
+  .app-main {
+    min-width: 100vw;
+  }
+}
+
+/* App header */
+.app-header {
+  flex-shrink: 0;
+  background: var(--panel);
+  min-height: 56px;
+}
+
+.app-header .max-w-6xl {
+  position: relative;
+}
+
+.app-header .header-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  width: max-content;
+}
+
+/* GPU utilization gauge */
+.gpu-gauge {
+  --gpu-gauge-width: 40px;
+  --gpu-gauge-cool: #fde68a;
+  --gpu-gauge-warm: #f59e0b;
+  --gpu-gauge-hot: #ef4444;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  justify-content: center;
+  min-width: var(--gpu-gauge-width);
+  width: var(--gpu-gauge-width);
+  max-width: var(--gpu-gauge-width);
+  flex: 0 0 var(--gpu-gauge-width);
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+:root:not([data-theme="dark"]) .gpu-gauge {
+  --gpu-gauge-cool: #fcd34d;
+  --gpu-gauge-warm: #f59e0b;
+  --gpu-gauge-hot: #ef4444;
+}
+
+.settings-toggle-wrap {
+  --gpu-config-gap: 4px;
+  gap: var(--gpu-config-gap);
+}
+
+.gpu-gauge.hidden {
+  display: inline-flex;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.gpu-gauge.is-visible {
+  opacity: 1;
+}
+
+.gpu-gauge-pill,
+.gpu-gauge-textonly {
+  display: none;
+}
+
+.gpu-gauge-pill {
+  min-width: 18px;
+  padding: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.gpu-gauge-pill-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.gpu-gauge-pill-stack {
+  display: inline-flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 2px;
+}
+
+.gpu-gauge-pill-light {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d1d5db;
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.gpu-gauge-pill-light[data-light="cool"] {
+  background: var(--gpu-gauge-cool);
+}
+
+.gpu-gauge-pill-light[data-light="warm"] {
+  background: var(--gpu-gauge-warm);
+}
+
+.gpu-gauge-pill-light[data-light="hot"] {
+  background: var(--gpu-gauge-hot);
+}
+
+.gpu-gauge-textonly {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.gpu-gauge-textonly-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.gpu-gauge-textonly-value {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.gpu-gauge[data-variant="pill"] .gpu-gauge-ring,
+.gpu-gauge[data-variant="pill"] .gpu-gauge-label,
+.gpu-gauge[data-variant="pill"] .gpu-gauge-textonly {
+  display: none;
+}
+
+.gpu-gauge[data-variant="pill"] .gpu-gauge-pill {
+  display: inline-flex;
+}
+
+.gpu-gauge[data-variant="text"] .gpu-gauge-ring,
+.gpu-gauge[data-variant="text"] .gpu-gauge-label,
+.gpu-gauge[data-variant="text"] .gpu-gauge-pill {
+  display: none;
+}
+
+.gpu-gauge[data-variant="text"] .gpu-gauge-textonly {
+  display: inline-flex;
+}
+
+.gpu-gauge[data-level="cool"] .gpu-gauge-textonly-value {
+  color: var(--gpu-gauge-cool);
+}
+
+.gpu-gauge[data-level="warm"] .gpu-gauge-textonly-value {
+  color: var(--gpu-gauge-warm);
+}
+
+.gpu-gauge[data-level="hot"] .gpu-gauge-textonly-value {
+  color: var(--gpu-gauge-hot);
+}
+
+.gpu-gauge[data-level="cool"] .gpu-gauge-pill-light {
+  opacity: 0.25;
+}
+
+.gpu-gauge[data-level="cool"] .gpu-gauge-pill-light[data-light="cool"] {
+  opacity: 1;
+}
+
+.gpu-gauge[data-level="warm"] .gpu-gauge-pill-light {
+  opacity: 0.25;
+}
+
+.gpu-gauge[data-level="warm"] .gpu-gauge-pill-light[data-light="warm"] {
+  opacity: 1;
+}
+
+.gpu-gauge[data-level="hot"] .gpu-gauge-pill-light {
+  opacity: 0.25;
+}
+
+.gpu-gauge[data-level="hot"] .gpu-gauge-pill-light[data-light="hot"] {
+  opacity: 1;
+}
+
+/* App content (chat messages) */
+.app-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.content-title-bar {
+  flex-shrink: 0;
+  background: var(--panel);
+  padding: 16px 16px 8px;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--panel);
+  position: relative;
+}
+
+/* App footer (composer) */
+.app-footer {
+  flex-shrink: 0;
+  flex-grow: 0;
+  background: var(--panel);
+  border-top: 1px solid transparent;
+  max-height: 50vh;
+}
+
+/* Desktop: sidebar visible by default */
+@media (min-width: 901px) {
+  body:not(.sidebar-closed) .app-sidebar {
+    width: 16rem;
+    min-width: 16rem;
+  }
+  body:not(.sidebar-closed) .app-sidebar .side-wrap {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

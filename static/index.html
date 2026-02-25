@@ -1,0 +1,552 @@
+<!doctype html>
+<html>
+<head>
+  <!-- Document viewport settings -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <!-- Page title -->
+  <title>My private GPT</title>
+
+  <!-- App icons & manifest -->
+  <!-- Apple touch icon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png?v=20260225a">
+  <!-- Browser favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png?v=20260225a">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=20260225a">
+  <link rel="shortcut icon" href="/icons/icon-32.png?v=20260225a">
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.webmanifest?v=20260225a">
+
+  <!-- Theme & iOS web-app settings -->
+  <!-- Theme color for the browser UI -->
+  <meta name="theme-color" content="#0ea5a2">
+  <!-- Enable standalone mode on iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <!-- Status bar style on iOS -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- App title shown on iOS -->
+  <meta name="apple-mobile-web-app-title" content="gpt-20b">
+
+  <!-- MathJax configuration script -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$','$$'], ['\\[','\\]']]
+      },
+      options: {
+        skipHtmlTags: ['script','noscript','style','textarea','pre','code'],
+        ignoreHtmlClass: 'no-mathjax',
+        processHtmlClass: 'mathjax-process'
+      }
+    };
+  </script>
+  <!-- MathJax loader -->
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <!-- Inter font + Tailwind (CDN) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Inter:wght@400;500;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Main stylesheet -->
+  <link rel="stylesheet" href="/css/theme.css?v=20251219">
+  <link rel="stylesheet" href="/css/ui.css?v=20260224a">
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-[#0f1115] dark:text-[#F0EEE9]" data-sidebar-state="closed">
+
+<!-- Splash screen -->
+<div id="splash" class="splash" role="dialog" aria-modal="true" aria-labelledby="splashBrand" aria-live="polite">
+  <div class="splash-inner">
+    <div id="splashBrand" class="brand splash-brand">
+      <img src="/icons/icon-180.png" alt="App icon" class="brand-icon">
+    </div>
+    <p class="splash-tagline">My private GPT</p>
+    <p id="splashInfo" class="splash-info muted"></p>
+
+    <form id="splashLogin" class="splash-form" autocomplete="off">
+      <label class="visually-hidden" for="splashUser">Username</label>
+      <input id="splashUser" type="text" placeholder="user" autocomplete="username">
+
+      <label class="visually-hidden" for="splashPass">Password</label>
+      <input id="splashPass" type="password" placeholder="passwd" autocomplete="current-password">
+
+      <p id="splashError" class="splash-error hidden" role="alert"></p>
+      <button id="splashSubmit" class="btn" type="submit">Continue</button>
+    </form>
+
+    <div class="splash-actions">
+      <button id="splashContinue" class="btn hidden" type="button">Enter app</button>
+      <button id="splashSwitch" class="btn subtle hidden" type="button">Switch account</button>
+    </div>
+  </div>
+</div>
+
+<!-- App shell: sidebar + main viewport (full-push layout) -->
+<div id="appShell" class="app-shell">
+
+<!-- Sidebar container (full height, pushes viewport) -->
+<aside id="side" class="app-sidebar">
+  <div class="side-wrap">
+    <div class="side-actions">
+      <button id="newchat" class="btn btn-newchat" title="New chat">＋ New chat</button>
+    </div>
+    <div id="chatlist" class="list hover-menu"></div>
+    <div class="divider"></div>
+  </div>
+</aside>
+
+<!-- Main viewport (header + content + composer) -->
+<div id="appMain" class="app-main">
+
+<!-- App header -->
+<header class="app-header">
+  <div class="max-w-6xl mx-auto w-full px-4 sm:px-6 py-3 flex flex-wrap items-center gap-4 sm:flex-nowrap">
+    <div class="header-side header-side-left flex items-center gap-3 order-1 flex-shrink-0">
+      <button id="toggle"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 bg-white text-xl text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-black dark:text-[#F0EEE9] dark:hover:bg-slate-900"
+              title="Sidebar" aria-label="Toggle sidebar">
+        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="2.75" y="2.75" width="14.5" height="14.5" rx="3" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="8.5" y1="2.75" x2="8.5" y2="17.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="header-center flex justify-center order-2 px-4 flex-1">
+      <div id="modeBox"
+           class="settings-options toggle mode-toggle inline-flex"
+            role="group"
+            aria-label="Model speed">
+        <button id="modeFast" class="toggle-option" title="Fast model">Fast</button>
+        <button id="modeNormal" class="toggle-option on" title="Normal model">Normal</button>
+        <button id="modeDeep" class="toggle-option" title="Deep model">Deep</button>
+      </div>
+    </div>
+    <div class="settings-toggle-wrap header-side header-side-right flex items-center gap-3 order-3 flex-shrink-0 ml-auto">
+      <div id="gpuGauge" class="gpu-gauge hidden" aria-live="polite" aria-label="GPU busy">
+        <div class="gpu-gauge-pill" aria-hidden="true">
+          <span class="gpu-gauge-pill-stack">
+            <span class="gpu-gauge-pill-light" data-light="cool"></span>
+            <span class="gpu-gauge-pill-light" data-light="warm"></span>
+            <span class="gpu-gauge-pill-light" data-light="hot"></span>
+          </span>
+        </div>
+        <div class="gpu-gauge-textonly" aria-hidden="true">
+          <span class="gpu-gauge-textonly-label">GPU</span>
+          <span class="gpu-gauge-textonly-value" data-gpu-value>--%</span>
+        </div>
+        <span class="gpu-gauge-label">GPU</span>
+      </div>
+      <button id="settingsToggle"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 bg-white text-lg text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-black dark:text-[#F0EEE9] dark:hover:bg-slate-900"
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="settingsPanel"
+              aria-expanded="false"
+              aria-label="Settings"
+              title="Settings">
+        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="2.5" y="2.5" width="15" height="15" rx="4" stroke="currentColor" stroke-width="1.4"/>
+          <circle cx="10" cy="10" r="3.2" stroke="currentColor" stroke-width="1.4"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Primary content area -->
+<main id="chatLayout" class="app-content">
+  <!-- Chat title header -->
+  <div class="content-title-bar">
+    <div class="max-w-5xl mx-auto w-full">
+      <div class="chat-title flex items-center gap-3">
+        <h1 id="currentTitle" class="text-lg font-semibold">&lt;blank&gt;</h1>
+      </div>
+      <p id="currentSummary" class="chat-summary hidden"></p>
+    </div>
+  </div>
+  
+  <!-- Chat message stream -->
+  <div id="chat-messages" class="chat-messages">
+    <div class="chat-fade" aria-hidden="true"></div>
+    <div id="chat" class="max-w-3xl mx-auto w-full px-4 pt-2 pb-6"></div>
+  </div>
+</main>
+
+<!-- Composer form -->
+<footer id="composerShell" class="app-footer">
+  <form id="f" class="max-w-3xl mx-auto w-full px-4 py-4">
+    <div class="composer">
+      <div class="composer-inner">
+        <button id="micBtn" class="btn mic-btn" type="button" title="Hold to talk" aria-label="Microphone">
+          <span class="mic-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="3" width="6" height="12" rx="3" />
+              <path d="M5 12v2a7 7 0 0 0 14 0v-2" />
+              <path d="M12 21v-2" />
+              <path d="M8 23h8" />
+            </svg>
+          </span>
+        </button>
+        <button id="micLang"
+                class="button mic-lang hidden"
+                type="button"
+                title="Speech language"
+                aria-label="Speech language">🇺🇸</button>
+        <div class="composer-text">
+          <textarea id="t" placeholder="Ask anything…" rows="1"></textarea>
+        </div>
+        <button id="send" class="btn send" type="submit">Send</button>
+      </div>
+    </div>
+  </form>
+</footer>
+
+</div><!-- /#appMain -->
+</div><!-- /#appShell -->
+
+<div id="settingsPanel" class="settings-modal hidden" role="dialog" aria-hidden="true" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="settings-modal-card" role="document">
+    <div class="settings-modal-head">
+      <div class="settings-title-wrap">
+        <h2 id="settingsTitle">Settings</h2>
+        <span id="guestBadge" class="settings-guest-badge hidden" aria-live="polite">read-only guest</span>
+      </div>
+      <button id="settingsClose" class="settings-close" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="settings-modal-body">
+      <div class="settings-grid">
+        <section class="settings-section">
+          <h3>Appearance</h3>
+          <div class="settings-row">
+            <div class="settings-label">theme</div>
+            <div class="settings-control toggle-center" role="radiogroup">
+              <div class="settings-options toggle" data-theme-toggle>
+                <label class="settings-item toggle-option active" title="Light theme">
+                  <input class="settings-radio" type="radio" name="settings-theme" value="light" checked>
+                  <span>Light</span>
+                </label>
+                <label class="settings-item toggle-option" title="Dark theme">
+                  <input class="settings-radio" type="radio" name="settings-theme" value="dark">
+                  <span>Dark</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">font</div>
+            <div class="settings-control toggle-center" role="radiogroup">
+              <div class="settings-options toggle" data-font-choice>
+                <label class="settings-item toggle-option active" title="Inter">
+                  <input class="settings-radio" type="radio" name="settings-font" value="inter" checked>
+                  <span>Inter</span>
+                </label>
+                <label class="settings-item toggle-option" title="Roboto">
+                  <input class="settings-radio" type="radio" name="settings-font" value="roboto">
+                  <span>Roboto</span>
+                </label>
+                <label class="settings-item toggle-option" title="IBMPlex">
+                  <input class="settings-radio" type="radio" name="settings-font" value="ibm-plex">
+                  <span>IBMPlex</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">size</div>
+            <div class="settings-control toggle-center" role="radiogroup">
+              <div class="settings-options toggle font-size-toggle" data-font-size>
+                <label class="settings-item toggle-option" title="Smaller text">
+                  <input class="settings-radio" type="radio" name="settings-font-size" value="small" id="fontSizeSmall">
+                  <span>Small</span>
+                </label>
+                <label class="settings-item toggle-option active" title="Default text size">
+                  <input class="settings-radio" type="radio" name="settings-font-size" value="medium" id="fontSizeMedium" checked>
+                  <span>Default</span>
+                </label>
+                <label class="settings-item toggle-option" title="Bigger text">
+                  <input class="settings-radio" type="radio" name="settings-font-size" value="large" id="fontSizeLarge">
+                  <span>Large</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Speech</h3>
+          <div class="settings-row">
+            <div class="settings-label">input</div>
+            <div class="settings-control toggle-center" data-stt-group="speech">
+              <div class="settings-options toggle" role="radiogroup">
+                <label class="settings-item toggle-option stt-option active" data-stt-option title="Web recognition runs entirely in the browser using the SpeechRecognition API">
+                  <input class="settings-radio"
+                         type="radio"
+                         name="settings-stt-mode"
+                         value="browser"
+                         data-settings-stt
+                         data-stt-mode="browser">
+                  <span>Web</span>
+                </label>
+                <label class="settings-item toggle-option stt-option" data-stt-option title="Local recognition uses the faster-whisper engine running on this machine for multi-language transcription">
+                  <input class="settings-radio"
+                         type="radio"
+                         name="settings-stt-mode"
+                         value="whisper"
+                         data-settings-stt
+                         data-stt-mode="whisper">
+                  <span>Server</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <p id="speechHintInput" class="settings-hint">
+            Input stays private inside this tab.
+          </p>
+          <div class="settings-row">
+            <div class="settings-label">output</div>
+            <div class="settings-control toggle-center" data-tts-group="output">
+              <div class="settings-options toggle" role="radiogroup">
+                <label class="settings-item toggle-option tts-option active" data-tts-option title="Web synthesis uses the browser SpeechSynthesis API to play audio directly in this tab">
+                  <input class="settings-radio"
+                         type="radio"
+                         name="settings-tts-mode"
+                         value="browser"
+                         data-settings-tts
+                         data-tts-mode="browser">
+                  <span>Web</span>
+                </label>
+                <label class="settings-item toggle-option tts-option" data-tts-option title="Local synthesis streams speech from the Coqui TTS server running on the backend for higher-fidelity voices">
+                  <input class="settings-radio"
+                         type="radio"
+                         name="settings-tts-mode"
+                         value="coqui"
+                         data-settings-tts
+                         data-tts-mode="coqui">
+                  <span>Server</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <p id="speechHintOutput" class="settings-hint">
+            Playback uses the browser voice instantly.
+          </p>
+        </section>
+
+        <section class="settings-section">
+          <h3>Models</h3>
+          <div class="settings-row">
+            <div class="settings-label">fast</div>
+            <div class="settings-control">
+              <select class="model-select"
+                      id="modelSelectFast"
+                      data-model-mode="fast">
+                <option value="deepseek-r1:8b" selected>deepseek-r1:8b</option>
+                <option value="deepseek-r1:14b">deepseek-r1:14b</option>
+                <option value="gemma3:4b">gemma3:4b</option>
+                <option value="gemma3:12b">gemma3:12b</option>
+                <option value="qwen3:8b">qwen3:8b</option>
+                <option value="qwen3:14b">qwen3:14b</option>
+                <option value="magistral:24b">magistral:24b</option>
+                <option value="gpt-oss:20b">gpt-oss:20b</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">normal</div>
+            <div class="settings-control">
+              <select class="model-select"
+                      id="modelSelectNormal"
+                      data-model-mode="normal">
+                <option value="deepseek-r1:8b">deepseek-r1:8b</option>
+                <option value="deepseek-r1:14b">deepseek-r1:14b</option>
+                <option value="gemma3:4b" selected>gemma3:4b</option>
+                <option value="gemma3:12b">gemma3:12b</option>
+                <option value="qwen3:8b">qwen3:8b</option>
+                <option value="qwen3:14b">qwen3:14b</option>
+                <option value="magistral:24b">magistral:24b</option>
+                <option value="gpt-oss:20b">gpt-oss:20b</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">deep</div>
+            <div class="settings-control">
+              <select class="model-select"
+                      id="modelSelectDeep"
+                      data-model-mode="deep">
+                <option value="deepseek-r1:8b">deepseek-r1:8b</option>
+                <option value="deepseek-r1:14b">deepseek-r1:14b</option>
+                <option value="gemma3:4b">gemma3:4b</option>
+                <option value="gemma3:12b">gemma3:12b</option>
+                <option value="qwen3:8b">qwen3:8b</option>
+                <option value="qwen3:14b">qwen3:14b</option>
+                <option value="magistral:24b" selected>magistral:24b</option>
+                <option value="gpt-oss:20b">gpt-oss:20b</option>
+              </select>
+            </div>
+          </div>
+          <p id="modelHintCombined" class="settings-hint model-hint"></p>
+        </section>
+
+        <section class="settings-section">
+          <h3>Account & tools</h3>
+          <div id="loggedBox" class="settings-list" role="none">
+            <div class="flex gap-2 settings-links-row">
+              <button id="tourBtn" class="settings-line settings-line-small" type="button">Welcome tour</button>
+              <button id="docsBtn" class="settings-line settings-line-small" type="button">Resources</button>
+            </div>
+          </div>
+          <div class="settings-list">
+            <div class="flex gap-2 settings-links-row">
+              <a href="/dashboard" id="statsLink" class="settings-line settings-line-small flex-1 text-center">Dashboard</a>
+              <button id="logout" class="settings-line settings-line-small danger flex-1" type="button">
+                <span id="logoutLabel">Logout</span>
+              </button>
+            </div>
+          </div>
+          <div class="settings-list">
+            <div class="settings-line flat flex items-center justify-between gap-3">
+              <div class="settings-label mb-0">debug</div>
+              <div class="settings-control toggle-center">
+                <div class="settings-options toggle switch-group">
+                  <label class="settings-item toggle-option" title="Debug panel off">
+                    <input class="settings-radio" type="radio" name="debug-panel" value="off" checked>
+                    <span>Off</span>
+                  </label>
+                  <label class="settings-item toggle-option" title="Debug panel on">
+                    <input class="settings-radio" type="radio" name="debug-panel" value="on">
+                    <span>On</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div id="serverModeRow" class="settings-line flat flex items-center justify-between gap-3 server-mode-row" data-eco="false">
+              <div class="settings-label mb-0">server mode</div>
+              <div class="settings-control toggle-center">
+                <div class="server-mode-status" aria-live="polite">
+                  <span class="server-mode-option server-mode-eco">
+                    eco <img class="server-mode-leaf" src="/icons/icon-eco.svg" alt="" aria-hidden="true">
+                  </span>
+                  <span class="server-mode-option server-mode-perf">performance</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="logPanel" class="log-panel hidden" aria-live="polite" aria-atomic="false">
+  <div class="log-head">
+    <strong>Debug logs</strong>
+    <div class="log-actions">
+      <button id="logClearBtn" title="Clear logs">Clear</button>
+      <button id="logHideBtn" title="Hide debug panel" aria-label="Hide debug panel">✕</button>
+    </div>
+  </div>
+  <div id="logContent" class="log-body"></div>
+</div>
+
+<!-- App rendering logic -->
+<script defer src="/js/render.js"></script>
+<script defer src="/js/chats_dialogs.js"></script>
+<script defer src="/js/chats_metadata.js"></script>
+<script defer src="/js/chats_export.js"></script>
+<script defer src="/js/chats.js"></script>
+<script defer src="/js/shell_speech.js"></script>
+<script defer src="/js/shell_auth.js"></script>
+<script defer src="/js/shell_theme.js"></script>
+<script defer src="/js/shell_settings.js"></script>
+<script defer src="/js/shell.js"></script>
+<script defer src="/js/app_sidebar.js"></script>
+<script defer src="/js/app_tour.js"></script>
+<script defer src="/js/app_debug.js"></script>
+<script defer src="/js/app_models.js"></script>
+<script defer src="/js/app.js"></script>
+<script defer src="/js/app_gpu.js"></script>
+<script defer src="/js/app_composer.js?v=20250104e"></script>
+<script defer src="/js/stt.js"></script>
+<script defer src="/js/stt-front.js"></script>
+<script defer src="/js/stt-back.js"></script>
+<script defer src="/js/tts_state.js"></script>
+<script defer src="/js/tts_ui.js"></script>
+<script defer src="/js/tts_stream.js"></script>
+<script defer src="/js/tts-settings.js"></script>
+<script defer src="/js/tts_voices.js"></script>
+<script defer src="/js/tts_player.js"></script>
+<script defer src="/js/tts_language.js"></script>
+<script defer src="/js/tts.js"></script>
+
+<!-- App-styled modals -->
+<!-- Confirm dialog -->
+<div id="appModal" class="dlg hidden" aria-hidden="true" role="dialog" aria-modal="true">
+  <!-- Confirm dialog backdrop -->
+  <div class="dlg-backdrop"></div>
+  <!-- Confirm dialog card -->
+  <div class="dlg-card" role="document">
+    <!-- Confirm dialog header -->
+    <div class="dlg-head">
+      <!-- Confirm dialog title -->
+      <div class="dlg-title" id="dlgTitle">Confirm</div>
+    </div>
+    <!-- Confirm dialog body -->
+    <div class="dlg-body">
+      <!-- Confirm dialog message -->
+      <p id="dlgMessage">Are you sure?</p>
+    </div>
+    <!-- Confirm dialog actions -->
+    <div class="dlg-actions">
+      <!-- Cancel confirm action -->
+      <button id="dlgCancel" class="btn secondary">Cancel</button>
+      <!-- Confirm delete action -->
+      <button id="dlgOk" class="btn danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Prompt dialog (e.g., rename chat) -->
+<div id="appPrompt" class="dlg hidden" aria-hidden="true" role="dialog" aria-modal="true">
+  <!-- Prompt dialog backdrop -->
+  <div class="dlg-backdrop"></div>
+  <!-- Prompt dialog card -->
+  <div class="dlg-card" role="document">
+    <!-- Prompt dialog header -->
+    <div class="dlg-head">
+      <!-- Prompt dialog title -->
+      <div class="dlg-title" id="prTitle">Rename</div>
+    </div>
+    <!-- Prompt dialog body -->
+    <div class="dlg-body">
+      <!-- Prompt text input label -->
+      <label for="prInput" class="visually-hidden">input</label>
+      <!-- Prompt text input -->
+      <input id="prInput" type="text" class="input" placeholder="Type here…" />
+      <!-- Prompt helper text -->
+      <p id="prHelp" class="muted" style="margin-top:8px"></p>
+    </div>
+    <!-- Prompt dialog actions -->
+    <div class="dlg-actions">
+      <!-- Cancel prompt action -->
+      <button id="prCancel" class="btn secondary">Cancel</button>
+      <!-- Confirm prompt action -->
+      <button id="prOk" class="btn">OK</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

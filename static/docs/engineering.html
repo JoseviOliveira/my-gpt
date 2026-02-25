@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <title>Engineering Principles</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← Back to app</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Index</a>
+      <a href="/docs/user.html">User Guide</a>
+      <a href="/docs/architecture.html">Architecture</a>
+      <a href="/docs/engineering.html" class="active">Engineering</a>
+      <a href="/docs/installation.html">Installation</a>
+      <a href="/docs/audience.html">Audience</a>
+      <a href="/docs/handwrite.html">About</a>
+      <a href="/docs/benchmark.html">Benchmarks</a>
+      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
+
+    </div>
+  </nav>
+
+  <main class="docs-content">
+    <header class="docs-header">
+      <h1>Engineering Principles</h1>
+      <p>Architectural decisions and operational constraints governing local-chat.</p>
+    </header>
+
+    <section class="docs-section">
+      <h2>Design Philosophy</h2>
+      
+      <h3>Local-First Architecture</h3>
+      <p>All data processing, inference, and storage occur exclusively on the local device. No external cloud APIs are used for core functionality, including inference, analytics, or telemetry. This constraint is non-negotiable and applies to user conversations, logs, metrics, model execution, and system analytics.</p>
+
+      <h3>Privacy-Centric Approach</h3>
+      <p>User data is treated as strictly private: no external telemetry, no background reporting, and no implicit data collection. Local metrics are permitted only for operational visibility and debugging, and must never leave the device.</p>
+
+      <h3>Simplicity and Robustness</h3>
+      <p>Engineering decisions favor simple, explicit designs with small dependency trees and predictable failure modes. Complex abstractions are avoided unless they demonstrably improve robustness. If a solution appears "clever", it is assumed to be incorrect until proven otherwise.</p>
+
+      <h3>Minimalism and KISS Principle</h3>
+      <p>Minimalism is a foundational constraint of the project, not an aesthetic preference. All components of local-chat are expected to remain as simple as possible, but no simpler. Design choices must favor the smallest viable solution that satisfies functional and operational requirements.</p>
+      
+      <p>The KISS principle is applied systematically:</p>
+      <ul>
+        <li>prefer fewer abstractions over layered indirection,</li>
+        <li>prefer explicit code over generic frameworks,</li>
+        <li>prefer readability and reasoning over optimization unless required,</li>
+        <li>prefer removal over addition.</li>
+      </ul>
+      
+      <p>Complexity is treated as technical debt. Any increase in complexity must be justified by a clear, measurable improvement in robustness, reliability, or long-term operability.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Terminology and Naming</h2>
+      
+      <h3>Role-Based Naming</h3>
+      <p>System components and models are named according to their functional role (e.g., "speed-oriented", "quality-oriented") rather than false hierarchies or tiers.</p>
+      
+      <h3>Functional Clarity</h3>
+      <p>Names must describe what a component <em>does</em>, not merely what it <em>is</em>. Ambiguous naming is discouraged.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>System Architecture</h2>
+      <p><strong>Technology Stack</strong></p>
+      <ul>
+        <li><strong>Inference Engine:</strong> Ollama (local API)</li>
+        <li><strong>Backend:</strong> Python / Flask (lightweight HTTP server)</li>
+        <li><strong>Frontend:</strong> Vanilla JavaScript, HTML5, CSS3</li>
+        <li><strong>Persistence:</strong> SQLite (structured data), filesystem (logs/chats)</li>
+        <li><strong>Gateway:</strong> Caddy (HTTPS reverse proxy)</li>
+      </ul>
+
+      <p><strong>Architectural Patterns</strong></p>
+      <ul>
+        <li><strong>Thin Routes, Fat Services:</strong> API routes are limited to parsing and formatting. Business logic resides in dedicated service modules.</li>
+        <li><strong>No Build Step:</strong> The frontend runs directly in the browser with no bundling or transpilation. This improves debuggability and maintainability.</li>
+        <li><strong>Native ES Modules:</strong> Frontend modularity relies exclusively on standard ES import/export syntax.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Model Policy</h2>
+      <ul>
+        <li><strong>Generation Constraint:</strong> Only modern-generation models (2025+) are exposed by default. Cross-generation comparisons are avoided.</li>
+        <li><strong>Selection Criteria:</strong> Models are selected based on recency, quality, throughput/latency, and resource consumption. Smaller models are preferred if quality is comparable.</li>
+        <li><strong>Explicit Non-Goals:</strong> Not competing with cloud SaaS, not a general coding copilot, not for multi-tenant deployments.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Coding Standards</h2>
+      <p><strong>Backend (Python)</strong></p>
+      <ul>
+        <li>Prefer the Python standard library; justify external dependencies.</li>
+        <li>Centralized logging is mandatory. No <code>print()</code> in production.</li>
+        <li>Model identifiers must be lowercase.</li>
+      </ul>
+      
+      <p><strong>Frontend (JavaScript)</strong></p>
+      <ul>
+        <li>No large frameworks (React, Vue, Svelte).</li>
+        <li>Explicit DOM manipulation.</li>
+        <li>File size discipline (< 600 lines).</li>
+      </ul>
+
+      <p><strong>CSS</strong></p>
+      <ul>
+        <li>Theming via local CSS variables.</li>
+        <li>Avoid utility-heavy approaches unless core.</li>
+        <li>Minimize visual noise.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>User Experience Constraints</h2>
+      <ul>
+        <li><strong>Core Experience:</strong> The conversation is the primary focus. Interfaces are mobile-first and responsive (>44px touch targets).</li>
+        <li><strong>Interaction Feedback:</strong> System state (loading, streaming, disabled) must always be explicit. Silent failures are forbidden. Errors must be visible and actionable.</li>
+        <li><strong>Accessibility:</strong> High contrast ratios and keyboard navigation are required.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Resource Guardrails</h2>
+      <ul>
+        <li><strong>GPU & Compute:</strong> GPU usage must be bounded and observable. Inference must be interruptible.</li>
+        <li><strong>Role-Based Limits:</strong> Non-admin users cannot trigger heavy models or monopolize resources.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Operational Discipline</h2>
+      <ul>
+        <li><strong>Long-Running Operation:</strong> Components must tolerate long uptime without leaks.</li>
+        <li><strong>Service Lifecycle:</strong> Services must be script-controllable and recover cleanly.</li>
+        <li><strong>Browser Responsibility:</strong> Browsers must be closed when unattended to release GPU contexts.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Benchmark Engineering Principles</h2>
+      <ul>
+        <li><strong>Dedicated Runtime Condition:</strong> Benchmarks are executed on a server dedicated to benchmark activity; interactive chat usage is intentionally excluded during runs.</li>
+        <li><strong>Reproducibility First:</strong> Each benchmark run must preserve scope, model list, dataset composition, and run metadata so results remain comparable and auditable.</li>
+        <li><strong>Isolation Before Conclusions:</strong> When an error appears, analysis must move from broad system behavior to minimal isolated reproduction.</li>
+      </ul>
+
+      <p><strong>Error Isolation Workflow</strong></p>
+      <ol>
+        <li><strong>Task-focused script:</strong> Create dedicated scripts that run a specific failing task/case to isolate the issue with minimal moving parts.</li>
+        <li><strong>Bypass app APIs:</strong> Use dedicated scripts that call Ollama directly, removing app-layer routes/middleware from the path.</li>
+        <li><strong>Raw CLI inspection:</strong> If needed, run Ollama via CLI and inspect raw model output to understand behavior (for example, hidden reasoning/thinking patterns).</li>
+      </ol>
+    </section>
+
+    <section class="docs-section">
+      <h2>Documentation Constraints</h2>
+      <ul>
+        <li><strong>Visual Consistency:</strong> Common structure and visual language across all pages.</li>
+        <li><strong>Tone and Style:</strong> Neutral, objective, instructional. No marketing language.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>LLM Usage Philosophy</h2>
+      <p>In practice, humans no longer hand-review every line of generated code. Humans define goals, constraints, and direction; LLMs propose solutions and generate code using the highest-probability approach given the prompt and available context. Failures are expected: prompts may be ambiguous, context windows may be incomplete, and generated code may be wrong or unstable. The human responsibility is to understand the technology, diagnose gaps, and iteratively guide the model toward the correct implementation.</p>
+    </section>
+
+    <footer class="docs-footer">
+      <a href="/docs/architecture.html" class="docs-footer-prev">← Architecture</a>
+      <a href="/docs/installation.html" class="docs-footer-next">Installation →</a>
+    </footer>
+  </main>
+
+  <script src="/js/docs_theme.js"></script>
+</body>
+</html>

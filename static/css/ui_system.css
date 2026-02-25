@@ -1,0 +1,260 @@
+/* --- iOS: prevent zoom on input focus --- */
+html { -webkit-text-size-adjust: 100%; }  /* keep system text sizing sane */
+
+textarea, input[type="text"], input[type="password"], input[type="search"], input[type="email"] {
+  font-size: 16px;     /* iOS won't zoom if font-size >= 16px */
+  line-height: 1.4;
+}
+
+.composer textarea {
+  font-size: 16px;     /* for iOS zoom fix */
+  line-height: 1.35;
+  resize: none;        /* we'll handle resize automatically */
+  overflow-y: hidden;  /* hide scrollbars */
+  min-height: 1.5em;   /* baseline height */
+  max-height: 40vh;    /* prevent it from taking the whole screen */
+}
+
+/* If your small login fields get cramped on iPhone, widen them just on small screens */
+@media (max-width: 480px) {
+  input[type="text"], input[type="password"] {
+    min-width: 110px;  /* adjust if needed */
+  }
+}
+
+/* Math blocks: allow horizontal scroll if wide */
+.msg .mjx-container { overflow-x: auto; }
+.msg .mjx-container[display="true"] { margin: .5rem 0; }
+
+/* Slightly smaller math on mobile */
+@media (max-width: 480px){
+  .msg .mjx-container { font-size: 0.95em; }
+}
+
+.msg h3 { margin: .75rem 0 .35rem; font-size: 1.05rem; }
+.msg h4 { margin: .5rem 0 .25rem;  font-size: 1rem;     opacity:.9; }
+
+
+/* iOS keyboard-safe layout (minimal) */
+:root{ --kb: 0px; }
+
+html { 
+  height: 100svh; /* Use Small Viewport Height to avoid toolbar overlap */
+  width: 100%;
+  overflow: hidden;
+}
+
+body { 
+  height: 100svh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  position: relative; /* Remove fixed positioning on body */
+}
+
+/* contentArea styles (legacy, now using app-content) */
+#contentArea{
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+#contentArea > div:first-child {
+  flex-shrink: 0;
+}
+
+#chat-messages{
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+
+#composerShell{
+  flex: 0 0 auto;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 20px));
+  z-index: 10;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-fade{
+  position:sticky;
+  top:0;
+  height:32px;
+  pointer-events:none;
+  z-index:1;
+  background:linear-gradient(to bottom,
+    rgba(var(--bg-rgb),1) 0%,
+    rgba(var(--bg-rgb),0.85) 40%,
+    rgba(var(--bg-rgb),0) 100%);
+}
+.msg.assistant.thinking {
+  opacity: .6;
+  font-style: italic;
+}
+
+/* Assistant text is grey while streaming, turns normal when finalized */
+.msg.assistant.streaming {
+  color: var(--assistant-streaming);
+  transition: color .2s ease;
+}
+
+.msg.fading-out,
+.meta.fading-out {
+  opacity: 0;
+  transition: opacity 1.5s ease;
+}
+
+.composer .send.stop {
+  background: #ffffff;
+  border-radius: 999px;
+  color: transparent;
+  font-size: 0;
+  animation: pulseStop 1s ease-in-out infinite alternate;
+}
+.composer .send.stop::after{
+  content:'■';
+  color:#111111;
+  font-size:17px;
+  transform:none;
+}
+.dark .composer .send.stop::after{
+  color: var(--surface-bg);
+}
+@keyframes pulseStop { from { transform: scale(1); } to { transform: scale(1.03); } }
+
+#micLang{
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin-left: -4px;
+  margin-right: 4px;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  line-height: 1;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+  transition: transform .15s ease;
+}
+#micLang:focus { outline: none; }
+#micLang:hover { transform: scale(1.05); }
+#micLang:active { transform: scale(0.95); }
+#micLang[disabled]{
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#micLang.using-code{
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.switch{
+  position:relative;
+  display:inline-block;
+  width:40px;
+  height:20px;
+  margin-right:10px;
+}
+.switch input{
+  opacity:0;
+  width:0;
+  height:0;
+}
+.slider{
+  position:absolute;
+  cursor:pointer;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
+  background-color:var(--border);
+  transition:0.2s;
+  border-radius:999px;
+}
+.slider:before{
+  position:absolute;
+  content:"";
+  height:16px;
+  width:16px;
+  left:2px;
+  bottom:2px;
+  background-color:#fff;
+  transition:0.2s;
+  border-radius:50%;
+  box-shadow:0 2px 4px rgba(0,0,0,0.15);
+}
+.switch input:checked + .slider{
+  background-color:var(--accent);
+}
+.switch input:checked + .slider:before{
+  transform:translateX(20px);
+}
+
+.log-panel{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  height:240px;
+  background:var(--panel);
+  border-top:1px solid var(--border);
+  box-shadow:0 -8px 24px rgba(2,6,23,0.18);
+  display:none;
+  flex-direction:column;
+  z-index:1000;
+}
+.log-panel.visible{display:flex;}
+.log-panel .log-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 14px;
+  border-bottom:1px solid var(--border);
+}
+.log-panel .log-head strong{font-size:13px; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted);}
+.log-panel .log-body{
+  flex:1;
+  padding:10px 14px;
+  overflow-y:auto;
+  font-family:ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size:12px;
+  white-space:pre-wrap;
+}
+.log-panel .log-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.log-panel .log-actions button{
+  border:1px solid var(--border);
+  background:var(--panel);
+  color:var(--ink);
+  cursor:pointer;
+  font-size:12px;
+  border-radius:4px;
+  padding:4px 8px;
+}
+
+.meta .metrics-dot{
+  margin:0 4px;
+  color:inherit;
+}

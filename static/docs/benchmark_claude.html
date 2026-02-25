@@ -1,0 +1,2066 @@
+<!DOCTYPE html>
+<html lang="en" class="docs-page">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script data-theme-bootstrap>
+  (function(){
+    const key = 'theme';
+    const root = document.documentElement;
+    let theme = null;
+    try { theme = localStorage.getItem(key); } catch {}
+    if (theme !== 'dark' && theme !== 'light') {
+      try {
+        theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      } catch { theme = 'light'; }
+    }
+    if (theme === 'dark') {
+      root.dataset.theme = 'dark';
+      root.classList.add('dark');
+    }
+  })();
+</script>
+<title>Benchmark Report by Claude</title>
+<link rel="stylesheet" href="/css/theme.css">
+<link rel="stylesheet" href="/css/ui.css">
+<link rel="stylesheet" href="/css/docs.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Overpass+Mono:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --ink: #0b0f0d;
+  --paper: #f2f0eb;
+  --paper2: #e8e5de;
+  --paper3: #dedad1;
+  --rule: rgba(0,0,0,0.1);
+  --rule2: rgba(0,0,0,0.06);
+
+  --green: #1a7a4a;
+  --green-bg: #e6f4ed;
+  --green-light: #2d9e63;
+  --amber: #b85c00;
+  --amber-bg: #fef3e2;
+  --amber-light: #e07a2a;
+  --red: #b71c1c;
+  --red-bg: #fdeaea;
+  --red-light: #e53935;
+  --blue: #1565c0;
+  --blue-bg: #e3effe;
+  --violet: #5c35a8;
+  --teal: #00695c;
+
+  --serif: 'Lora', Georgia, serif;
+  --sans: 'Syne', system-ui, sans-serif;
+  --mono: 'Overpass Mono', 'Fira Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.claude-main {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 80px clamp(16px, 4vw, 32px) clamp(24px, 5vw, 64px);
+}
+
+/* ── COVER ── */
+.cover {
+  background: var(--ink);
+  color: var(--paper);
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+  overflow: hidden;
+}
+
+.cover-left {
+  padding: 72px 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+  z-index: 1;
+}
+
+.cover-right {
+  padding: 72px 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+  z-index: 1;
+}
+
+.cover-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 70% 30%, rgba(45,158,99,0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 80%, rgba(21,101,192,0.08) 0%, transparent 50%);
+}
+
+.cover-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 48px;
+}
+
+.cover-title {
+  font-family: var(--sans);
+  font-size: clamp(40px, 5vw, 72px);
+  font-weight: 800;
+  line-height: 1.0;
+  letter-spacing: -0.03em;
+  margin-bottom: 32px;
+}
+
+.cover-title .hl { color: #2d9e63; }
+.cover-title .hl2 { color: #5590e8; }
+
+.cover-desc {
+  font-family: var(--serif);
+  font-size: 16px;
+  color: rgba(255,255,255,0.55);
+  max-width: 440px;
+  font-style: italic;
+  line-height: 1.6;
+  margin-bottom: 48px;
+}
+
+.cover-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 32px;
+}
+
+.cover-meta-item .label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 4px;
+}
+
+.cover-meta-item .value {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+}
+
+/* Score cards on right */
+.cover-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cover-score-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.cs-model {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  min-width: 130px;
+}
+
+.cs-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cs-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.cs-score {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 42px;
+  text-align: right;
+}
+
+.cs-badge {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cover-score-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: 16px;
+}
+
+/* ── PAGE LAYOUT ── */
+.wrap {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 48px;
+}
+
+.section {
+  padding: 80px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+.section-title {
+  font-family: var(--sans);
+  font-size: clamp(24px, 3vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin-bottom: 12px;
+}
+
+.section-desc {
+  font-family: var(--serif);
+  font-size: 15px;
+  color: rgba(0,0,0,0.5);
+  max-width: 680px;
+  font-style: italic;
+  margin-bottom: 48px;
+  line-height: 1.6;
+}
+
+/* ── LAYOUT GRIDS ── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.four-col { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+/* ── KPI CARDS ── */
+.kpi-card {
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 22px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent, var(--green));
+}
+
+.kpi-val {
+  font-family: var(--sans);
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent, var(--green));
+  margin-bottom: 6px;
+}
+
+.kpi-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.4);
+}
+
+.kpi-sub {
+  font-size: 12px;
+  color: rgba(0,0,0,0.4);
+  margin-top: 4px;
+  font-family: var(--mono);
+}
+
+/* ── CHART CARD ── */
+.chart-card {
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 28px 32px;
+}
+
+.chart-card + .chart-card { margin-top: 20px; }
+
+.cc-title {
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+
+.cc-caption {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: rgba(0,0,0,0.35);
+  letter-spacing: 0.05em;
+  margin-bottom: 20px;
+}
+
+/* ── STATUS BADGES ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-amber { background: var(--amber-bg); color: var(--amber); }
+.badge-red { background: var(--red-bg); color: var(--red); }
+.badge-blue { background: var(--blue-bg); color: var(--blue); }
+
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ── SCORECARD TABLE ── */
+.scorecard {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.scorecard thead th {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--ink);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.5);
+  white-space: nowrap;
+}
+
+.scorecard tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--rule2);
+  vertical-align: middle;
+}
+
+.scorecard tbody tr:last-child td { border-bottom: none; }
+.scorecard tbody tr:hover td { background: var(--paper2); }
+
+/* ── FINDING CARDS ── */
+.finding-card {
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 22px;
+  border-left: 3px solid var(--accent, var(--green));
+}
+
+.fc-icon { font-size: 20px; margin-bottom: 8px; }
+.fc-title {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent, var(--green));
+  margin-bottom: 6px;
+}
+.fc-body { font-size: 13px; color: rgba(0,0,0,0.55); line-height: 1.55; }
+
+/* ── VERDICT PILL ── */
+.verdict-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.vp-deploy { background: #e6f4ed; color: #1a7a4a; border: 1px solid #a8d5bc; }
+.vp-caution { background: #fef3e2; color: #b85c00; border: 1px solid #f5cc80; }
+.vp-avoid { background: #fdeaea; color: #b71c1c; border: 1px solid #f5a0a0; }
+
+/* ── MINI SPARKLINE BARS ── */
+.sparkbar {
+  display: flex;
+  align-items: flex-end;
+  height: 24px;
+  gap: 2px;
+}
+
+.sparkbar span {
+  display: block;
+  min-width: 3px;
+  border-radius: 1px;
+}
+
+/* ── PROGRESS BARS ── */
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule2);
+}
+
+.progress-row:last-child { border-bottom: none; }
+
+.pr-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+  min-width: 130px;
+}
+
+.pr-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: var(--paper2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pr-bar {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.pr-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ── DIVIDER ── */
+.hr { height: 1px; background: var(--rule); margin: 36px 0; }
+
+/* ── FOOTNOTE ── */
+.footnote {
+  background: var(--paper2);
+  border-left: 3px solid rgba(0,0,0,0.15);
+  padding: 12px 18px;
+  font-size: 12px;
+  color: rgba(0,0,0,0.45);
+  font-family: var(--mono);
+  border-radius: 0 4px 4px 0;
+  margin-top: 12px;
+}
+
+/* ── FOOTER ── */
+.report-footer {
+  background: var(--panel);
+  color: var(--toggle-ink);
+  padding: 24px 28px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .cover { grid-template-columns: 1fr; }
+  .cover-right { display: none; }
+  .wrap { padding: 0 20px; }
+  .two-col, .three-col, .four-col { grid-template-columns: 1fr; }
+}
+
+/* ── DOCS LOOK & FEEL ALIGNMENT (match benchmark.html shell) ── */
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.claude-main {
+  max-width: 1100px;
+  padding-top: 84px;
+}
+
+.cover {
+  min-height: auto;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  grid-template-columns: 1fr;
+  overflow: hidden;
+}
+
+.cover-bg {
+  display: none;
+}
+
+.cover-left,
+.cover-right {
+  padding: 28px;
+}
+
+.cover-left {
+  border-right: none;
+}
+
+.cover-right {
+  border-top: 1px solid var(--border);
+}
+
+.cover-eyebrow {
+  color: var(--toggle-ink);
+  margin-bottom: 20px;
+}
+
+.cover-title {
+  font-family: inherit;
+  font-size: clamp(30px, 5vw, 46px);
+  letter-spacing: -0.02em;
+}
+
+.cover-title .hl,
+.cover-title .hl2 {
+  color: var(--ink);
+}
+
+.cover-desc {
+  color: var(--toggle-ink);
+  font-family: inherit;
+  font-style: normal;
+  max-width: none;
+  margin-bottom: 24px;
+}
+
+.cover-meta-grid {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.cover-meta-item .label {
+  color: var(--toggle-ink);
+}
+
+.cover-meta-item .value {
+  color: var(--ink);
+  font-family: inherit;
+}
+
+.cover-score-label {
+  color: var(--toggle-ink);
+}
+
+.cover-score-row {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+}
+
+.cs-model {
+  color: var(--toggle-ink);
+}
+
+.cs-bar-wrap {
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.wrap {
+  max-width: 100%;
+  padding: 0;
+  margin-top: 20px;
+}
+
+.section {
+  padding: 26px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.section-label {
+  color: var(--toggle-ink);
+  letter-spacing: 0.14em;
+}
+
+.section-title {
+  color: var(--ink);
+  font-family: inherit;
+  font-size: clamp(22px, 3vw, 32px);
+  letter-spacing: -0.02em;
+}
+
+.section-desc {
+  color: var(--toggle-ink);
+  font-family: inherit;
+}
+
+.chart-card,
+.kpi-card,
+.metric-card,
+.finding-card {
+  border: 1px solid var(--border);
+  background: var(--panel-alt);
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.cc-title,
+.kpi-label,
+.metric-label,
+.fc-title {
+  color: var(--ink);
+  font-family: inherit;
+}
+
+.cc-caption,
+.metric-sub,
+.kpi-sub,
+.fc-body {
+  color: var(--toggle-ink);
+}
+
+.scorecard {
+  border: 1px solid var(--border);
+}
+
+.scorecard th {
+  background: var(--panel);
+}
+
+.scorecard td,
+.scorecard th {
+  border-color: var(--border);
+}
+
+@media (max-width: 900px) {
+  .cover-right {
+    display: block;
+  }
+}
+</style>
+</head>
+<body>
+<nav class="docs-nav">
+  <a href="/" class="docs-nav-back">← Back to app</a>
+  <div class="docs-nav-links">
+    <a href="/docs/index.html">Index</a>
+    <a href="/docs/user.html">User Guide</a>
+    <a href="/docs/architecture.html">Architecture</a>
+    <a href="/docs/engineering.html">Engineering</a>
+    <a href="/docs/installation.html">Installation</a>
+    <a href="/docs/audience.html">Audience</a>
+    <a href="/docs/handwrite.html">About</a>
+    <a href="/docs/benchmark.html" class="active">Benchmarks</a>
+    <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
+  </div>
+</nav>
+<main class="claude-main">
+<header class="docs-header">
+  <h1>Benchmark Report by Claude</h1>
+  <p style="color:var(--toggle-ink);font-size:17px;">Alternative benchmark analysis with different scoring emphasis and visualizations.</p>
+</header>
+
+<!-- ═══════════════════════ COVER ═══════════════════════ -->
+<div class="cover">
+  <div class="cover-bg"></div>
+
+  <div class="cover-left">
+    <div>
+      <div class="cover-eyebrow">Run 9cc182d7 · Darwin arm64 · Ollama 0.13.5</div>
+      <h1 class="cover-title">
+        Chat App<br>
+        <span class="hl">Readiness</span><br>
+        <span class="hl2">Report</span>
+      </h1>
+      <p class="cover-desc">
+        A full-stack evaluation of nine local LLMs across quality, latency, generation speed,
+        reliability, and server stability — scored for real-world deployment in a human-facing
+        chat application.
+      </p>
+    </div>
+    <div class="cover-meta-grid">
+      <div class="cover-meta-item">
+        <div class="label">Run Date</div>
+        <div class="value">2026-02-09 → 18</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="label">Hardware</div>
+        <div class="value">Apple arm64</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="label">Items Evaluated</div>
+        <div class="value">636 (current report dataset)</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="label">Judge</div>
+        <div class="value">claude-sonnet-4-6</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="label">Quantization</div>
+        <div class="value">Q4_K_M (8×) + MXFP4</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="label">Models Tested</div>
+        <div class="value">8 · 4B → 20B params</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-right">
+    <div>
+      <div class="cover-score-label">Composite Chat App Score (0 – 100)</div>
+      <div class="cover-scores" id="coverScores"></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ═══════════════════════ SECTION 1: COMPOSITE SCORECARD ═══════════════════════ -->
+<section class="section" id="scorecard">
+  <div class="section-label">§ 01 — Overall Verdict</div>
+  <h2 class="section-title">Composite Chat App Readiness Score</h2>
+  <p class="section-desc">
+    Four dimensions weighted for a chat app context: <strong>Reliability</strong> (35% — can the server respond at all?),
+    <strong>Latency / TTFT</strong> (30% — how fast does the first token appear?),
+    <strong>Answer Quality</strong> (25% — pass rate from semantic evaluation), and
+    <strong>Generation Speed</strong> (10% — tokens/sec sustaining a readable stream).
+  </p>
+
+  <div class="four-col" style="margin-bottom:32px">
+    <div class="kpi-card" style="--accent: var(--green)">
+      <div class="kpi-val">100%</div>
+      <div class="kpi-label">Best Reliability</div>
+      <div class="kpi-sub">gemma3:4b & gemma3:12b</div>
+    </div>
+    <div class="kpi-card" style="--accent: var(--blue)">
+      <div class="kpi-val">11.2s</div>
+      <div class="kpi-label">Fastest Median TTFT</div>
+      <div class="kpi-sub">gemma3 family (both sizes)</div>
+    </div>
+    <div class="kpi-card" style="--accent: var(--amber)">
+      <div class="kpi-val">145 tok/s</div>
+      <div class="kpi-label">Peak Generation Speed</div>
+      <div class="kpi-sub">gemma3:4b peak observed</div>
+    </div>
+    <div class="kpi-card" style="--accent: var(--red)">
+      <div class="kpi-val">96.9%</div>
+      <div class="kpi-label">Worst Failure Rate</div>
+      <div class="kpi-sub">All qwen3 models need stability fixes</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="cc-title">Full Scorecard — All Dimensions</div>
+    <div class="cc-caption">RELIABILITY (35%) · LATENCY (30%) · QUALITY (25%) · SPEED (10%) · models sorted by composite score</div>
+    <div style="overflow-x:auto">
+      <table class="scorecard" id="fullScorecard"></table>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-top:20px">
+    <div class="cc-title">Composite Score Ranked</div>
+    <div class="cc-caption">Weighted composite score out of 100 </div>
+    <div style="height:320px; position:relative">
+      <canvas id="chartComposite"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 2: LATENCY ═══════════════════════ -->
+<section class="section" id="latency">
+  <div class="section-label">§ 02 — First Token Latency (TTFT)</div>
+  <h2 class="section-title">Time-to-First-Token: The #1 UX Driver</h2>
+  <p class="section-desc">
+    TTFT is what users perceive as "lag" — the time between hitting Send and seeing the first
+    character appear. Anything under ~15s is acceptable; under 12s is good. A p95 &gt;45s means
+    nearly 1 in 20 conversations feels completely broken. Failures (no response) are plotted at 60s.
+  </p>
+
+  <div class="two-col" style="margin-bottom:20px">
+    <div class="chart-card">
+      <div class="cc-title">Median TTFT by Model</div>
+      <div class="cc-caption">Lower is better · failures mapped to 60 000 ms · sorted fastest first</div>
+      <div style="height:300px; position:relative">
+        <canvas id="chartTTFTMedian"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">TTFT Percentiles (p50 / p90 / p95)</div>
+      <div class="cc-caption">Grouped bars — variability matters as much as median</div>
+      <div style="height:300px; position:relative">
+        <canvas id="chartTTFTPercentiles"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="cc-title">TTFT Distribution — All 636 Responses</div>
+    <div class="cc-caption">Each row = one model · each dot = one response · x-axis = TTFT ms · failures at 60 000 ms (far right, red)</div>
+    <div id="ttftSwarm" style="overflow-x:auto; padding: 8px 0;"></div>
+  </div>
+
+  <div class="chart-card" style="margin-top:20px">
+    <div class="cc-title">% Responses Under Latency Thresholds</div>
+    <div class="cc-caption">For a chat app: &lt;15s = acceptable · &lt;12s = great · &lt;10s = instant feel</div>
+    <div style="height:300px; position:relative">
+      <canvas id="chartTTFTThresholds"></canvas>
+    </div>
+  </div>
+
+  <div style="margin-top:20px" class="two-col">
+    <div class="chart-card">
+      <div class="cc-title">TTFT: Shortform vs. Chat Tasks</div>
+      <div class="cc-caption">Context length difference changes latency — longer chat prompts → higher TTFT</div>
+      <div style="height:280px; position:relative">
+        <canvas id="chartTTFTSplit"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Warmup / Cold-Start Time</div>
+      <div class="cc-caption">Time for first token on model cold-start · relevant for auto-scaling deployments</div>
+      <div style="height:280px; position:relative">
+        <canvas id="chartWarmup"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 3: GENERATION SPEED ═══════════════════════ -->
+<section class="section" id="speed">
+  <div class="section-label">§ 03 — Generation Speed</div>
+  <h2 class="section-title">Tokens per Second: Streaming Feel</h2>
+  <p class="section-desc">
+    After the first token, users experience the stream as "reading speed." &gt;60 tok/s feels
+    instantaneous; 40–60 tok/s is smooth; 20–40 tok/s is readable but noticeable; &lt;20 tok/s
+    feels sluggish for long answers. Speed is constrained by model size and quantization.
+  </p>
+
+  <div class="two-col" style="margin-bottom:20px">
+    <div class="chart-card">
+      <div class="cc-title">Median Tokens/Second</div>
+      <div class="cc-caption">Successful responses only · sorted fastest first</div>
+      <div style="height:300px; position:relative">
+        <canvas id="chartTPSMedian"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Speed vs. Quality Tradeoff</div>
+      <div class="cc-caption">Scatter: x=median tok/s · y=answer quality % · bubble size=reliability %</div>
+      <div style="height:300px; position:relative">
+        <canvas id="chartSpeedQuality"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="cc-title">Token Generation Speed Distribution (Box Plots)</div>
+    <div class="cc-caption">Min · p25 · median · p75 · max · outliers shown · narrow band = very consistent hardware-bound speed</div>
+    <div style="height:300px; position:relative">
+      <canvas id="chartTPSBox"></canvas>
+    </div>
+  </div>
+
+  <div class="footnote" style="margin-top:16px">
+    ⚑ Note: qwen3:8b, deepseek-r1:8b, and gpt-oss:20b show extremely narrow TPS bands (±1 tok/s variance) — this suggests hard hardware ceilings, not software throttling. gemma3:4b shows high variance (63–145 tok/s) reflecting output-length dependency.
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 4: RELIABILITY & SERVER STABILITY ═══════════════════════ -->
+<section class="section" id="reliability">
+  <div class="section-label">§ 04 — Server Stability & Reliability</div>
+  <h2 class="section-title">Can the Server Respond? Stability KPIs</h2>
+  <p class="section-desc">
+    Two failure modes observed: <em>empty responses</em> (Ollama returns HTTP 200 with 0 bytes
+    — likely memory pressure or context overflow) and <em>TTFT timeouts</em> (>45s first-token,
+    process killed). Both are hard failures for a chat app — the user sees nothing.
+  </p>
+
+  <div class="two-col" style="margin-bottom:20px">
+    <div class="chart-card">
+      <div class="cc-title">Response Success Rate</div>
+      <div class="cc-caption">% of requests that produced a valid response · 100% required for production</div>
+      <div style="height:300px; position:relative">
+        <canvas id="chartSuccessRate"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Failure Mode Breakdown</div>
+      <div class="cc-caption">What type of failure occurred when a response wasn't delivered</div>
+      <div style="height:300px; position:relative">
+        <canvas id="chartFailureModes"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="cc-title">Stacked: Pass · Semantic Fail · Format Fail · Server Failure</div>
+    <div class="cc-caption">Full item decomposition per model — server failures (empty response + timeout) are the dark grey · all 636 items shown</div>
+    <div style="height:320px; position:relative">
+      <canvas id="chartStacked"></canvas>
+    </div>
+  </div>
+
+  <div style="margin-top:20px">
+    <div class="chart-card">
+      <div class="cc-title">Per-Model Reliability Detail</div>
+      <div class="cc-caption">Total requests · successful · empty response failures · TTFT-killed · pass rate</div>
+      <div id="reliabilityTable"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 5: OUTPUT BEHAVIOUR ═══════════════════════ -->
+<section class="section" id="output">
+  <div class="section-label">§ 05 — Output Behaviour</div>
+  <h2 class="section-title">Verbosity, Token Usage & Response Shape</h2>
+  <p class="section-desc">
+    How much a model "talks" directly affects perceived quality and generation time.
+    Concise answers (&lt;50 tokens) feel snappy; verbose answers (&gt;300 tokens) feel thorough
+    but slow. Both extremes can be wrong for a chat app: too terse loses context, too verbose
+    is exhausting to read and slow to stream.
+  </p>
+
+  <div class="two-col" style="margin-bottom:20px">
+    <div class="chart-card">
+      <div class="cc-title">Output Verbosity Profile</div>
+      <div class="cc-caption">Concise &lt;50 tok · Medium 50–299 tok · Verbose ≥300 tok · stacked 100%</div>
+      <div style="height:320px; position:relative">
+        <canvas id="chartVerbosity"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Median Output Tokens</div>
+      <div class="cc-caption">Median output token count per model · successful responses only</div>
+      <div style="height:320px; position:relative">
+        <canvas id="chartOutputTokens"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="cc-title">TTFT vs Output Length Correlation</div>
+    <div class="cc-caption">Scatter per model — does output length affect time-to-first-token? (It shouldn't — TTFT should be independent of output length)</div>
+    <div style="height:300px; position:relative">
+      <canvas id="chartTTFTvTokens"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 6: QUALITY ═══════════════════════ -->
+<section class="section" id="quality">
+  <div class="section-label">§ 06 — Answer Quality (External Judge)</div>
+  <h2 class="section-title">What Users Get: Semantic Correctness</h2>
+  <p class="section-desc">
+    Pass rates from the semantic evaluation across 5 shortform tasks and 3 chat categories.
+    For a chat app, all dimensions matter — a fast but wrong model is worse than a slower correct one.
+  </p>
+
+  <div class="two-col" style="margin-bottom:20px">
+    <div class="chart-card">
+      <div class="cc-title">Overall Answer Quality (Pass Rate)</div>
+      <div class="cc-caption">Includes timeout failures as wrong answers · external judge verdict · sorted best first</div>
+      <div style="height:300px; position:relative">
+        <canvas id="chartQuality"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Quality Radar — Task Breakdown</div>
+      <div class="cc-caption">Top 4 performers · 5 shortform task axes · 10 items each</div>
+      <div style="height:300px; position:relative; max-width:360px; margin:0 auto;">
+        <canvas id="chartRadar"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="cc-title">Chat Task Performance: Memory · Safety · Instruction Following</div>
+    <div class="cc-caption">Chat-specific evaluation · 10 items per dataset per model · % pass rate</div>
+    <div style="height:300px; position:relative">
+      <canvas id="chartChatQuality"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 7: UX QUADRANT ═══════════════════════ -->
+<section class="section" id="quadrant">
+  <div class="section-label">§ 07 — Deployment Decision Matrix</div>
+  <h2 class="section-title">Speed vs. Quality Quadrant Analysis</h2>
+  <p class="section-desc">
+    For a chat app, the ideal model is in the <strong>top-right quadrant</strong>: fast latency
+    AND high quality. Models in the bottom-right are fast but wrong; top-left are accurate but
+    slow; bottom-left should be avoided entirely.
+  </p>
+
+  <div class="two-col" style="margin-bottom:20px">
+    <div class="chart-card" style="grid-column: span 2">
+      <div class="cc-title">Deployment Quadrant: Latency Score vs. Answer Quality</div>
+      <div class="cc-caption">x = latency score (inverted TTFT, higher=faster) · y = answer quality (pass %) · bubble = reliability % · quadrant lines at medians</div>
+      <div style="height:420px; position:relative">
+        <canvas id="chartQuadrant"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="cc-title">Full UX Radar: Five Dimensions Per Model</div>
+    <div class="cc-caption">Quality · Reliability · Latency · Speed · Instruction Following — normalized 0-100</div>
+    <div class="three-col" style="margin-top:12px">
+      <div style="height:220px; position:relative"><canvas id="radarA"></canvas></div>
+      <div style="height:220px; position:relative"><canvas id="radarB"></canvas></div>
+      <div style="height:220px; position:relative"><canvas id="radarC"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SECTION 8: VERDICTS ═══════════════════════ -->
+<section class="section" id="verdicts">
+  <div class="section-label">§ 08 — Deployment Recommendations</div>
+  <h2 class="section-title">Model-by-Model Verdicts</h2>
+  <p class="section-desc">
+    Based on the composite evaluation, each model receives a deployment recommendation
+    for a consumer-facing chat application running on Apple arm64 hardware.
+  </p>
+
+  <div id="verdictCards" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:32px;"></div>
+
+  <div class="chart-card">
+    <div class="cc-title">Key Findings</div>
+    <div class="cc-caption">Cross-cutting observations from latency, quality, and stability data</div>
+    <div class="three-col" style="margin-top:16px" id="findingsGrid"></div>
+  </div>
+</section>
+
+</div><!-- /wrap -->
+
+<footer class="report-footer">
+  <span>Chat App Readiness Report · Run 9cc182d7 · Darwin arm64 · Ollama 0.13.5</span>
+  <span>636 items · 8 models · External Judge: claude-sonnet-4-6 · 2026-02-18</span>
+</footer>
+
+<!-- ═══════════════════════════════════ SCRIPTS ═══════════════════════════════════ -->
+<script>
+// ─────────────── RAW DATA ───────────────
+const MODELS = ['gemma3:4b','qwen3:4b','qwen3:8b','deepseek-r1:8b','gemma3:12b','deepseek-r1:14b','qwen3:14b','gpt-oss:20b'];
+const MODEL_PARAMS = {
+  'gemma3:4b': {params:4.3, quant:'Q4_K_M'},
+  'qwen3:4b':  {params:4.0, quant:'Q4_K_M'},
+  'qwen3:8b':  {params:8.2, quant:'Q4_K_M'},
+  'deepseek-r1:8b': {params:8.2, quant:'Q4_K_M'},
+  'gemma3:12b': {params:12.2, quant:'Q4_K_M'},
+  'deepseek-r1:14b': {params:14.1, quant:'Q4_K_M'},
+  'qwen3:14b': {params:14.5, quant:'Q4_K_M'},
+  'gpt-oss:20b': {params:20.9, quant:'MXFP4'},
+};
+
+const TTFT_ALL = {
+  'gemma3:4b': [11018,11027,11142,11017,10986,11042,11044,10960,11190,11000,11088,11189,11205,11184,11122,11169,11186,11225,11308,11225,11177,11196,11187,11142,11229,11359,11338,11032,11156,11056,11280,11367,11325,10947,11405,11142,11329,11352,11264,11098,11094,11017,11078,11084,11104,11116,11266,10932,10953,11132,11263,11063,11077,11173,11124,11184,11340,11117,11232,11334,11082,11192,11113,11135,11190,11160,11217,11289,11281,11250,11139,11161,11206,11141,11434,11182,11164,11109,11154,11188],
+  'qwen3:4b': [23684,35723,18639,14417,14522,15139,35914,15218,26303,56032,60000,11552,60000,15238,60000,17465,60000,60000,19778,60000,24542,29689,24177,24378,60000,25794,25130,24391,14671,26211,28397,30638,28644,34516,60000,51709,30357,24069,55747,60000,13995,14965,15327,19166,21381,60000,20994,60000,18932,60000,13920,11895,15261,14110,15911,60000,14664,60000,60000,17004,15756,60000,15069,17156,60000,60000,16765,14607,17513,60000,16987,13944,17062,17098,60000,17548,60000,60000,60000,60000],
+  'qwen3:8b': [23392,18029,16766,22043,19640,14926,25966,18067,24901,49730,18835,16497,60000,22601,60000,22024,26571,60000,26406,60000,16713,17835,16798,14672,15841,14251,34924,15038,15185,31488,16359,20604,27384,35906,60000,14923,14774,18974,31811,54440,17681,15026,17687,14880,19289,60000,27545,21926,23860,60000,20313,16290,17781,13459,17187,60000,16038,21775,60000,60000,13994,15399,14466,15672,60000,60000,14996,13613,17276,60000,18405,19311,14921,18593,60000,21847,60000,20834,60000,60000],
+  'deepseek-r1:8b': [21500,50189,18876,33861,39086,53341,18544,39763,22586,28812,21231,17873,27523,19071,60000,26207,27995,60000,33917,60000,14493,17286,15452,16492,16127,18965,17946,17717,18998,19680,31700,28386,25639,47170,60000,60000,36332,25273,60000,60000,20352,18593,16308,16960,27159,60000,60000,60000,20806,60000,60000,17868,17171,15713,16351,18685,16440,14870,22110,18242,14968,20153,15321,17301,17404,22230,16591,16559,20164,60000,16127,16443,15975,16373,19162,16361,16907,16571,17116,17596],
+  'gemma3:12b': [11216,11280,11211,11494,11319,11187,11328,11133,11389,11393,11278,11234,11159,11177,11241,11364,11273,11444,11210,11285,11174,11223,11315,11309,11410,11271,11345,11234,11268,11260,11313,11421,11249,11376,11337,11162,11201,11308,11419,11387,11313,11277,11452,11440,11410,11657,11423,11295,11376,11470,11374,11407,11415,11398,11661,11184,11160,11317,11424,11354,11288,11346,11409,11380,11557,11536,11491,11354,11524,11697,11279,11337,11443,11339,11243,11384,11284,11246,11337,11136],
+  'deepseek-r1:14b': [22186,21252,24528,24429,28161,24555,19473,23728,26401,56071,27674,19305,28622,23857,37919,24979,60000,60000,40683,60000,28405,21355,22097,17659,20796,20368,35811,21450,23479,19925,24891,23374,60000,25329,60000,27068,31600,21647,60000,60000,21395,16936,23633,22451,34273,60000,60000,48650,30541,60000,27973,21318,25178,25396,21158,28122,60000,60000,29283,26488,60000,21119,20744,18097,16690,20170,60000,18157,23834,27987,28765,16891,60000,60000,28366,60000],
+  'qwen3:14b': [26070,24135,19454,21466,19929,23722,33813,19132,64031,60000,32675,22496,60000,21313,60000,31197,53550,60000,36537,60000,20810,18127,19902,15479,18614,20195,60000,18864,28586,41444,21969,22519,43302,65228,60000,60000,20465,23801,40909,60000,29775,36943,71316,19051,62070,33563,47401,60000,38419,60000,55173,28417,53939,28492,45136,36727,35115,60000,51060,60000,72215,31276,30179,18022,41731,25063,24684,40062,35259,60000,32799,28187,33348,52659,60000,31737,60000,41300,60000,60000],
+  'gpt-oss:20b': [36407,45699,31810,43218,24824,39108,41173,13770,44916,38503,23193,22979,23035,22578,26862,12979,24761,60000,23191,17877,22827,23471,22799,22778,22906,23125,25489,23564,12341,24020,14306,14649,58011,25761,60000,14471,34464,41091,14374,75413,23077,23337,42391,34646,36160,44569,27268,30781,23738,42914,22495,22747,23290,23126,25491,60000,29283,60000,60000,60000,23684,26138,23446,24494,27306,27655,23188,23958,25755,27508,22980,22841,22595,23190,23478,23009,13646,23408,32986,24928],
+};
+
+const TPS_ALL = {
+  'gemma3:4b': [95.5,103.4,83.8,94.9,142.5,82.7,84.3,94.2,75.5,91.0,83.3,106.6,92.3,86.0,107.2,93.8,92.3,78.5,107.2,101.3,88.2,110.0,88.1,88.0,91.5,140.8,88.2,94.9,97.8,144.2,145.2,108.3,104.9,106.4,103.0,109.1,102.9,108.7,72.6,70.7,87.4,91.6,88.3,82.4,106.7,76.3,84.4,88.3,94.8,80.7,97.4,80.5,109.9,109.7,74.0,75.1,73.3,72.9,72.7,72.7,80.7,74.1,79.1,72.4,63.0,73.6,74.1,78.6,73.7,73.3,70.1,72.3,72.3,72.7,72.2,72.4,72.4,70.4,72.4,72.8],
+  'qwen3:4b': [72.6,71.1,73.4,74.1,73.9,69.8,71.3,73.7,72.4,73.4,65.4,68.3,73.4,74.6,73.6,74.5,74.6,74.2,74.2,74.3,74.1,73.9,70.1,70.8,69.8,70.3,68.5,70.8,72.0,68.0,72.6,72.1,69.7,73.3,71.3,71.1,71.6,74.2,75.2,73.8,74.1,73.9,73.9,73.7,73.8,74.1,73.5,73.8,73.8,73.7,73.7,73.8,73.9,73.5,73.8],
+  'qwen3:8b': [43.6,43.8,43.9,43.7,43.8,44.0,43.6,43.8,43.6,42.9,43.8,43.9,43.7,43.4,43.6,43.6,44.0,43.9,43.9,44.1,44.0,44.1,43.3,44.1,44.0,43.4,43.9,43.8,43.5,43.3,44.1,44.1,43.8,43.4,42.7,43.8,43.9,43.9,44.1,43.8,42.3,43.7,43.6,43.8,43.9,43.8,44.1,43.8,43.9,43.6,44.2,44.0,44.0,43.9,43.9,44.2,43.7,43.7,43.7,44.0,43.6,43.8,43.7],
+  'deepseek-r1:8b': [43.6,41.9,43.9,43.4,43.2,42.4,43.9,42.7,43.7,43.5,43.8,43.9,43.5,43.5,43.5,43.5,43.3,44.1,43.9,44.0,43.9,44.0,43.8,43.8,43.8,43.8,43.8,43.4,43.5,43.6,42.9,43.3,43.6,43.8,43.9,43.9,44.0,43.6,43.7,43.9,43.7,44.0,43.9,43.8,43.8,44.0,43.7,43.7,44.0,43.7,44.0,43.7,43.7,43.7,43.9,43.9,43.6,43.8,43.8,43.9,43.7,43.8,43.8,43.7,43.8,43.7,43.7],
+  'gemma3:12b': [37.6,56.5,34.9,37.7,56.3,42.2,37.6,42.3,29.8,37.5,33.4,56.4,42.3,37.7,42.3,42.3,37.6,56.5,56.4,56.4,35.1,42.3,34.9,34.9,42.4,56.2,42.3,37.4,34.9,56.5,56.4,53.9,56.5,56.3,54.4,54.5,56.4,56.5,34.7,41.2,37.4,37.4,42.0,36.7,37.4,37.4,34.9,42.4,37.4,30.6,42.1,30.6,41.5,42.2,29.1,29.5,29.0,28.6,28.3,28.3,31.3,32.1,31.6,30.0,28.3,28.6,30.1,30.7,28.5,28.7,27.7,28.0,27.9,28.0,28.0,27.8,27.9,27.9,28.0,28.1],
+  'deepseek-r1:14b': [26.0,26.0,26.0,26.0,25.9,26.0,26.0,26.0,25.9,25.5,26.0,26.1,25.9,26.0,25.3,26.0,25.6,26.0,26.1,26.0,26.1,26.1,26.1,25.7,26.0,26.0,26.1,25.9,26.0,25.9,25.9,26.1,26.0,26.0,26.1,26.0,26.0,25.7,25.4,25.9,24.2,24.5,24.7,24.3,24.9,25.0,24.9,25.2,26.1,26.0,26.1,26.1,26.0,26.1,25.9,25.9,25.9,26.1,25.9],
+  'qwen3:14b': [24.1,24.1,23.5,24.2,23.7,24.2,23.8,24.3,24.1,24.0,24.2,23.9,22.6,23.9,24.5,24.2,24.0,24.0,24.5,24.1,24.0,23.9,23.9,22.8,22.7,24.1,24.0,22.5,24.9,25.1,24.8,25.0,23.8,25.0,24.1,20.5,23.3,18.9,25.2,19.4,25.2,25.1,25.0,25.1,14.8,25.0,25.1,18.9,20.8,25.0,20.8,24.0,25.1,25.0,19.6,25.0,25.0,25.0,21.8,25.0],
+  'gpt-oss:20b': [45.5,45.7,46.0,45.5,46.0,45.6,45.6,45.8,45.5,32.7,46.0,46.9,46.4,46.8,45.5,45.6,45.6,45.9,45.7,46.1,45.9,46.3,46.4,46.2,46.1,45.5,46.0,45.9,46.1,40.9,45.6,45.8,45.7,40.7,40.5,45.8,45.4,46.1,45.9,46.1,45.9,45.8,45.9,45.5,45.6,46.1,45.6,46.6,46.1,46.0,46.2,45.5,45.5,45.6,45.4,45.8,45.6,45.5,45.5,45.7,45.6,45.3,45.4,46.0,42.1,46.2,45.9,46.0,45.9,45.6,45.8,45.8,45.5],
+};
+
+const SUCCESS = {
+  'gemma3:4b':      {ok:80, total:80, empty:0, killed:0},
+  'qwen3:4b':       {ok:55, total:80, empty:24, killed:1},
+  'qwen3:8b':       {ok:63, total:80, empty:17, killed:0},
+  'deepseek-r1:8b': {ok:67, total:80, empty:13, killed:0},
+  'gemma3:12b':     {ok:80, total:80, empty:0, killed:0},
+  'deepseek-r1:14b':{ok:59, total:76, empty:17, killed:0},
+  'qwen3:14b':      {ok:60, total:80, empty:18, killed:2},
+  'gpt-oss:20b':    {ok:73, total:80, empty:6, killed:1},
+};
+
+const WARMUP = {
+  'gemma3:4b':7324, 'qwen3:4b':6785, 'qwen3:8b':7697,
+  'deepseek-r1:8b':7898, 'gemma3:12b':9524, 'deepseek-r1:14b':11139,
+  'qwen3:14b':9579, 'gpt-oss:20b':11209
+};
+
+const QUALITY = {
+  overall: {'gemma3:4b':71.2,'qwen3:4b':61.2,'qwen3:8b':67.5,'deepseek-r1:8b':73.8,'gemma3:12b':80.0,'deepseek-r1:14b':68.4,'qwen3:14b':68.8,'gpt-oss:20b':76.2},
+  tasks: {
+    'gemma3:4b':       [60,50,80,90,60],
+    'qwen3:4b':        [60,70,80,80,40],
+    'qwen3:8b':        [80,70,90,70,50],
+    'deepseek-r1:8b':  [70,60,100,60,60],
+    'gemma3:12b':      [90,70,80,60,80],
+    'deepseek-r1:14b': [80,60,100,50,70],
+    'qwen3:14b':       [70,70,90,60,50],
+    'gpt-oss:20b':     [80,80,90,60,70],
+  },
+  chat: {
+    'gemma3:4b':       {memory:80, safety:90, instruction:60},
+    'qwen3:4b':        {memory:60, safety:50, instruction:50},
+    'qwen3:8b':        {memory:70, safety:60, instruction:50},
+    'deepseek-r1:8b':  {memory:80, safety:100, instruction:60},
+    'gemma3:12b':      {memory:90, safety:100, instruction:70},
+    'deepseek-r1:14b': {memory:70, safety:50, instruction:60},
+    'qwen3:14b':       {memory:90, safety:60, instruction:60},
+    'gpt-oss:20b':     {memory:90, safety:80, instruction:60},
+  }
+};
+
+const OUTPUT_VERBOSITY = {
+  'gemma3:4b':       {concise:78, medium:10, verbose:12},
+  'qwen3:4b':        {concise:5, medium:34, verbose:61},
+  'qwen3:8b':        {concise:0, medium:49, verbose:51},
+  'deepseek-r1:8b':  {concise:0, medium:30, verbose:70},
+  'gemma3:12b':      {concise:80, medium:8, verbose:12},
+  'deepseek-r1:14b': {concise:0, medium:36, verbose:64},
+  'qwen3:14b':       {concise:3, medium:42, verbose:55},
+  'gpt-oss:20b':     {concise:14, medium:76, verbose:11},
+};
+
+const MED_OUT_TOKENS = {
+  'gemma3:4b':6, 'qwen3:4b':404, 'qwen3:8b':302, 'deepseek-r1:8b':370,
+  'gemma3:12b':4, 'deepseek-r1:14b':354, 'qwen3:14b':306, 'gpt-oss:20b':100
+};
+
+// ─────────────── HELPER FUNCTIONS ───────────────
+function pct(arr, p) {
+  const s = [...arr].sort((a,b)=>a-b);
+  return s[Math.floor(s.length*p/100)] || s[s.length-1];
+}
+function median(arr) { return pct(arr, 50); }
+function mean(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+
+// ─────────────── COMPUTE SCORES ───────────────
+const SCORES = {};
+MODELS.forEach(m => {
+  const s = SUCCESS[m];
+  const reliabilityScore  = (s.ok / s.total) * 35;
+
+  const ttfts = TTFT_ALL[m];
+  const medTTFT = median(ttfts);
+  const latencyScore = Math.max(0, 30 * (1 - Math.max(0, medTTFT - 11000) / 34000));
+
+  const tpsArr = TPS_ALL[m];
+  const medTPS = tpsArr.length ? median(tpsArr) : 0;
+  const speedScore = Math.min(10, (medTPS / 100) * 10);
+
+  const qualityScore = (QUALITY.overall[m] / 100) * 25;
+
+  SCORES[m] = {
+    reliability: reliabilityScore,
+    latency: latencyScore,
+    speed: speedScore,
+    quality: qualityScore,
+    composite: reliabilityScore + latencyScore + speedScore + qualityScore,
+    raw: {
+      successRate: s.ok/s.total*100,
+      medTTFT,
+      medTPS,
+      qualityPct: QUALITY.overall[m]
+    }
+  };
+});
+
+const sortedByComposite = [...MODELS].sort((a,b) => SCORES[b].composite - SCORES[a].composite);
+
+// ─────────────── CHART DEFAULTS ───────────────
+const GRIDCOLOR = 'rgba(0,0,0,0.06)';
+const FONT = "'Overpass Mono', monospace";
+Chart.defaults.color = 'rgba(0,0,0,0.4)';
+Chart.defaults.font.family = FONT;
+Chart.defaults.font.size = 10;
+
+// Traffic-light color by composite score
+function scoreColor(v, alpha=1) {
+  if (v >= 70) return `rgba(26,122,74,${alpha})`;
+  if (v >= 50) return `rgba(184,92,0,${alpha})`;
+  return `rgba(183,28,28,${alpha})`;
+}
+
+function modelColor(m, alpha=1) {
+  const palette = {
+    'gemma3:4b':'rgba(26,122,74,',
+    'gemma3:12b':'rgba(18,90,55,',
+    'qwen3:4b':'rgba(21,101,192,',
+    'qwen3:8b':'rgba(13,71,161,',
+    'qwen3:14b':'rgba(26,35,126,',
+    'deepseek-r1:8b':'rgba(230,81,0,',
+    'deepseek-r1:14b':'rgba(191,54,12,',
+    'gpt-oss:20b':'rgba(106,27,154,',
+  };
+  return (palette[m]||'rgba(0,0,0,') + alpha + ')';
+}
+
+// ─────────────── COVER SCORES ───────────────
+{
+  const c = document.getElementById('coverScores');
+  sortedByComposite.forEach(m => {
+    const sc = SCORES[m];
+    const pct = sc.composite;
+    const color = pct >= 70 ? '#2d9e63' : pct >= 50 ? '#e07a2a' : '#e53935';
+    const dotColor = pct >= 70 ? '#2d9e63' : pct >= 50 ? '#f5a623' : '#e53935';
+    c.innerHTML += `
+      <div class="cover-score-row">
+        <div class="cs-badge" style="background:${dotColor}"></div>
+        <div class="cs-model">${m}</div>
+        <div class="cs-bar-wrap">
+          <div class="cs-bar" style="width:${pct}%;background:${color}"></div>
+        </div>
+        <div class="cs-score" style="color:${color}">${pct.toFixed(0)}</div>
+      </div>`;
+  });
+}
+
+// ─────────────── FULL SCORECARD TABLE ───────────────
+{
+  const t = document.getElementById('fullScorecard');
+  const rows = sortedByComposite.map((m,i) => {
+    const sc = SCORES[m];
+    const s = SUCCESS[m];
+    const tdstyle = (v, max, g='--green',a='--amber',r='--red') => {
+      const pct = v/max*100;
+      const color = pct>=75?`var(${g})`:pct>=50?`var(${a})`:`var(${r})`;
+      return `style="color:${color};font-weight:600;"`;
+    };
+    const rankIcon = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    const verdict = sc.composite>=70?'vp-deploy':sc.composite>=50?'vp-caution':'vp-avoid';
+    const vLabel = sc.composite>=70?'DEPLOY':sc.composite>=50?'CAUTION':'AVOID';
+    return `<tr>
+      <td><b>${rankIcon}${m}</b><br><span style="font-size:9px;color:#999">${MODEL_PARAMS[m].params}B · ${MODEL_PARAMS[m].quant}</span></td>
+      <td><span class="verdict-pill ${verdict}">${vLabel}</span></td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;color:${scoreColor(sc.composite)}">${sc.composite.toFixed(1)}</td>
+      <td ${tdstyle(sc.raw.successRate, 100)}>${sc.raw.successRate.toFixed(0)}%</td>
+      <td ${tdstyle(35-sc.latency, 35, '--red','--amber','--green')}>${(sc.raw.medTTFT/1000).toFixed(1)}s</td>
+      <td ${tdstyle(sc.raw.qualityPct, 100)}>${sc.raw.qualityPct.toFixed(0)}%</td>
+      <td ${tdstyle(sc.raw.medTPS, 100)}>${sc.raw.medTPS.toFixed(0)} t/s</td>
+      <td style="text-align:right;color:#666">${WARMUP[m]/1000}s</td>
+    </tr>`;
+  }).join('');
+  t.innerHTML = `<thead><tr>
+    <th>Model</th>
+    <th>Verdict</th>
+    <th style="text-align:right">Score /100</th>
+    <th>Reliability</th>
+    <th>Med TTFT ↓</th>
+    <th>Quality ↑</th>
+    <th>Speed ↑</th>
+    <th style="text-align:right">Warmup</th>
+  </tr></thead><tbody>${rows}</tbody>`;
+}
+
+// ─────────────── COMPOSITE CHART ───────────────
+new Chart(document.getElementById('chartComposite'), {
+  type:'bar',
+  data:{
+    labels: sortedByComposite.map(m=>m),
+    datasets:[
+      {label:'Reliability (35%)', data:sortedByComposite.map(m=>SCORES[m].reliability), backgroundColor:'rgba(26,122,74,0.85)',stack:'s'},
+      {label:'Latency (30%)',     data:sortedByComposite.map(m=>SCORES[m].latency),     backgroundColor:'rgba(21,101,192,0.85)',stack:'s'},
+      {label:'Quality (25%)',     data:sortedByComposite.map(m=>SCORES[m].quality),     backgroundColor:'rgba(156,39,176,0.85)',stack:'s'},
+      {label:'Speed (10%)',       data:sortedByComposite.map(m=>SCORES[m].speed),       backgroundColor:'rgba(230,81,0,0.85)',stack:'s'},
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10,boxHeight:10}}},
+    scales:{
+      x:{stacked:true, grid:{color:GRIDCOLOR}, ticks:{color:'rgba(0,0,0,0.6)', font:{size:10}, maxRotation:30}},
+      y:{stacked:true, min:0, max:100, grid:{color:GRIDCOLOR},
+         ticks:{color:'rgba(0,0,0,0.4)', callback:v=>v+''}}
+    }
+  }
+});
+
+// ─────────────── TTFT MEDIAN ───────────────
+{
+  const sm = [...MODELS].sort((a,b)=>median(TTFT_ALL[a])-median(TTFT_ALL[b]));
+  new Chart(document.getElementById('chartTTFTMedian'),{
+    type:'bar',
+    data:{
+      labels:sm,
+      datasets:[{
+        label:'Median TTFT (ms)',
+        data:sm.map(m=>median(TTFT_ALL[m])),
+        backgroundColor:sm.map(m=>{
+          const v=median(TTFT_ALL[m]);
+          return v<13000?'rgba(26,122,74,0.8)':v<25000?'rgba(184,92,0,0.8)':'rgba(183,28,28,0.8)';
+        }),
+        borderRadius:5, borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>`${(c.raw/1000).toFixed(1)}s`}}},
+      scales:{
+        x:{grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v/1000+'s'},
+           min:0,
+           afterDataLimits:s=>{s.max=65000;}},
+        y:{grid:{display:false},ticks:{color:'rgba(0,0,0,0.7)',font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ─────────────── TTFT PERCENTILES ───────────────
+new Chart(document.getElementById('chartTTFTPercentiles'),{
+  type:'bar',
+  data:{
+    labels:MODELS,
+    datasets:[
+      {label:'p50', data:MODELS.map(m=>pct(TTFT_ALL[m],50)), backgroundColor:'rgba(21,101,192,0.7)', borderRadius:3},
+      {label:'p90', data:MODELS.map(m=>pct(TTFT_ALL[m],90)), backgroundColor:'rgba(184,92,0,0.7)', borderRadius:3},
+      {label:'p95', data:MODELS.map(m=>pct(TTFT_ALL[m],95)), backgroundColor:'rgba(183,28,28,0.7)', borderRadius:3},
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10}},
+      tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${(c.raw/1000).toFixed(1)}s`}}},
+    scales:{
+      x:{grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.6)',font:{size:9},maxRotation:35}},
+      y:{grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>(v/1000)+'s'}}
+    }
+  }
+});
+
+// ─────────────── TTFT SWARM ───────────────
+{
+  const LABELS_X = [10000,15000,20000,25000,30000,35000,40000,45000,50000,55000,60000];
+  const TOTAL_W = 780;
+  const MAX_MS = 62000;
+  let html = '<div style="font-family:\'Overpass Mono\',monospace;font-size:10px;">';
+  // ruler
+  html += '<div style="display:flex;margin-left:140px;margin-bottom:4px;color:rgba(0,0,0,0.3);">';
+  LABELS_X.forEach(l => {
+    const x = (l/MAX_MS)*TOTAL_W;
+    html += `<span style="position:absolute;left:${140+x}px">${l/1000}s</span>`;
+  });
+  html += '</div>';
+
+  MODELS.forEach(m => {
+    const vals = TTFT_ALL[m];
+    html += `<div style="display:flex;align-items:center;margin-bottom:5px;position:relative;">`;
+    html += `<span style="min-width:140px;color:rgba(0,0,0,0.7);font-size:10px;padding-right:8px">${m}</span>`;
+    html += `<div style="position:relative;height:14px;width:${TOTAL_W}px;background:rgba(0,0,0,0.04);border-radius:3px;overflow:visible;">`;
+
+    // threshold lines
+    [15000,45000].forEach(th => {
+      const lx = (th/MAX_MS)*TOTAL_W;
+      const col = th===15000?'rgba(26,122,74,0.3)':'rgba(183,28,28,0.3)';
+      html += `<div style="position:absolute;left:${lx}px;top:-2px;width:1px;height:18px;background:${col};"></div>`;
+    });
+
+    vals.forEach(v => {
+      const x = Math.min((v/MAX_MS)*TOTAL_W, TOTAL_W-3);
+      const isFail = v >= 59000;
+      const color = isFail ? 'rgba(183,28,28,0.7)' : v<13000?'rgba(26,122,74,0.7)':v<25000?'rgba(21,101,192,0.6)':'rgba(184,92,0,0.65)';
+      html += `<div style="position:absolute;left:${x}px;top:2px;width:4px;height:10px;background:${color};border-radius:1px;" title="${(v/1000).toFixed(1)}s"></div>`;
+    });
+    html += '</div></div>';
+  });
+
+  // legend
+  html += `<div style="margin-left:140px;margin-top:8px;display:flex;gap:20px;color:rgba(0,0,0,0.4);font-size:10px;">
+    <span><span style="display:inline-block;width:10px;height:10px;background:rgba(26,122,74,0.7);border-radius:1px;margin-right:4px"></span>&lt;13s fast</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:rgba(21,101,192,0.6);border-radius:1px;margin-right:4px"></span>13–25s ok</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:rgba(184,92,0,0.65);border-radius:1px;margin-right:4px"></span>25–45s slow</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:rgba(183,28,28,0.7);border-radius:1px;margin-right:4px"></span>fail/timeout</span>
+  </div>`;
+  html += '</div>';
+  document.getElementById('ttftSwarm').innerHTML = html;
+}
+
+// ─────────────── TTFT THRESHOLDS ───────────────
+{
+  const thresholds = [10000,12000,15000,20000,30000,45000];
+  const labels = ['<10s','<12s','<15s','<20s','<30s','<45s'];
+  const ms = MODELS;
+  new Chart(document.getElementById('chartTTFTThresholds'),{
+    type:'bar',
+    data:{
+      labels: ms,
+      datasets: thresholds.map((th,i)=>({
+        label: labels[i],
+        data: ms.map(m=>{
+          const all = TTFT_ALL[m];
+          return +(all.filter(v=>v<th).length/all.length*100).toFixed(1);
+        }),
+        backgroundColor: [
+          'rgba(26,122,74,0.9)','rgba(45,158,99,0.8)','rgba(76,175,80,0.7)',
+          'rgba(139,195,74,0.65)','rgba(205,220,57,0.6)','rgba(255,193,7,0.55)'
+        ][i],
+        borderRadius:2
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10,boxHeight:10}}},
+      scales:{
+        x:{grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.6)',font:{size:9},maxRotation:35}},
+        y:{min:0,max:105,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+'%'}}
+      }
+    }
+  });
+}
+
+// ─────────────── TTFT SHORTFORM VS CHAT ───────────────
+{
+  const SF_MED = {'gemma3:4b':11142,'qwen3:4b':24123,'qwen3:8b':18974,'deepseek-r1:8b':21231,'gemma3:12b':11308,'deepseek-r1:14b':24143,'qwen3:14b':24135,'gpt-oss:20b':24390};
+  const CH_MED = {'gemma3:4b':11178,'qwen3:4b':15834,'qwen3:8b':16738,'deepseek-r1:8b':16749,'gemma3:12b':11364,'deepseek-r1:14b':23834,'qwen3:14b':35115,'gpt-oss:20b':23462};
+  const ms = MODELS;
+  new Chart(document.getElementById('chartTTFTSplit'),{
+    type:'bar',
+    data:{
+      labels:ms,
+      datasets:[
+        {label:'Shortform', data:ms.map(m=>SF_MED[m]), backgroundColor:'rgba(21,101,192,0.75)', borderRadius:4},
+        {label:'Chat', data:ms.map(m=>CH_MED[m]), backgroundColor:'rgba(230,81,0,0.7)', borderRadius:4}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${(c.raw/1000).toFixed(1)}s`}}},
+      scales:{
+        x:{grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.6)',font:{size:9},maxRotation:35}},
+        y:{grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>(v/1000).toFixed(0)+'s'}}
+      }
+    }
+  });
+}
+
+// ─────────────── WARMUP CHART ───────────────
+{
+  const sm = [...MODELS].sort((a,b)=>WARMUP[a]-WARMUP[b]);
+  new Chart(document.getElementById('chartWarmup'),{
+    type:'bar',
+    data:{
+      labels:sm,
+      datasets:[{
+        label:'Warmup TTFT (ms)',
+        data:sm.map(m=>WARMUP[m]),
+        backgroundColor:sm.map(m=>modelColor(m,0.75)),
+        borderRadius:5, borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${(c.raw/1000).toFixed(1)}s`}}},
+      scales:{
+        x:{grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>(v/1000).toFixed(0)+'s'}},
+        y:{grid:{display:false},ticks:{color:'rgba(0,0,0,0.7)',font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ─────────────── TPS MEDIAN ───────────────
+{
+  const sm = [...MODELS].sort((a,b) => {
+    const ma = TPS_ALL[a].length?median(TPS_ALL[a]):0;
+    const mb = TPS_ALL[b].length?median(TPS_ALL[b]):0;
+    return mb-ma;
+  });
+  new Chart(document.getElementById('chartTPSMedian'),{
+    type:'bar',
+    data:{
+      labels:sm,
+      datasets:[{
+        label:'Median tok/s',
+        data:sm.map(m=>TPS_ALL[m].length?+median(TPS_ALL[m]).toFixed(1):0),
+        backgroundColor:sm.map(m=>{
+          const v=TPS_ALL[m].length?median(TPS_ALL[m]):0;
+          return v>=60?'rgba(26,122,74,0.8)':v>=40?'rgba(184,92,0,0.8)':'rgba(183,28,28,0.8)';
+        }),
+        borderRadius:5, borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} tok/s`}}},
+      scales:{
+        x:{min:0,max:160,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+' t/s'}},
+        y:{grid:{display:false},ticks:{color:'rgba(0,0,0,0.7)',font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ─────────────── SPEED VS QUALITY SCATTER ───────────────
+{
+  const ms = MODELS;
+  new Chart(document.getElementById('chartSpeedQuality'),{
+    type:'scatter',
+    data:{
+      datasets: ms.map(m=>({
+        label:m,
+        data:[{x: TPS_ALL[m].length?+median(TPS_ALL[m]).toFixed(1):0, y:QUALITY.overall[m]}],
+        backgroundColor: modelColor(m, 0.7),
+        borderColor: modelColor(m, 1),
+        borderWidth:2,
+        pointRadius: Math.sqrt(SUCCESS[m].ok/SUCCESS[m].total*100)*3,
+        pointHoverRadius: 12
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:c=>`${c.dataset.label}: ${c.raw.x} t/s, ${c.raw.y}% quality`
+        }}
+      },
+      scales:{
+        x:{title:{display:true,text:'Median Tokens/sec →',color:'rgba(0,0,0,0.4)'},grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)'},min:0,max:160},
+        y:{title:{display:true,text:'Answer Quality %',color:'rgba(0,0,0,0.4)'},grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+'%'},min:0,max:100}
+      }
+    }
+  });
+}
+
+// ─────────────── TPS BOX PLOTS (via bar ranges) ───────────────
+{
+  const ms = MODELS.filter(m=>TPS_ALL[m].length>=5);
+  const boxes = ms.map(m=>{
+    const sorted=[...TPS_ALL[m]].sort((a,b)=>a-b);
+    return {
+      min:sorted[0],
+      p25:pct(sorted,25),
+      med:median(sorted),
+      p75:pct(sorted,75),
+      max:sorted[sorted.length-1]
+    };
+  });
+
+  new Chart(document.getElementById('chartTPSBox'),{
+    type:'bar',
+    data:{
+      labels:ms,
+      datasets:[
+        {label:'Min→p25',  data:boxes.map(b=>[b.min,b.p25]),   backgroundColor:'rgba(0,0,0,0)',    borderColor:'rgba(0,0,0,0)'},
+        {label:'p25→med',  data:boxes.map(b=>[b.p25,b.med]),   backgroundColor:'rgba(21,101,192,0.5)', borderRadius:2},
+        {label:'med→p75',  data:boxes.map(b=>[b.med,b.p75]),   backgroundColor:'rgba(21,101,192,0.8)', borderRadius:2},
+        {label:'Max',      data:boxes.map(b=>b.max),           backgroundColor:'rgba(0,0,0,0)',    borderColor:'rgba(0,0,0,0)'},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:(c,i)=>{
+            if(c.datasetIndex===0||c.datasetIndex===3) return null;
+            const b=boxes[c.dataIndex];
+            return `min:${b.min.toFixed(0)} p25:${b.p25.toFixed(0)} med:${b.med.toFixed(0)} p75:${b.p75.toFixed(0)} max:${b.max.toFixed(0)} tok/s`;
+          }
+        }}
+      },
+      scales:{
+        x:{grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.6)',font:{size:9},maxRotation:30}},
+        y:{grid:{color:GRIDCOLOR},min:0,max:160,ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+' t/s'}}
+      }
+    }
+  });
+}
+
+// ─────────────── SUCCESS RATE ───────────────
+{
+  const sm=[...MODELS].sort((a,b)=>SUCCESS[b].ok/SUCCESS[b].total-SUCCESS[a].ok/SUCCESS[a].total);
+  new Chart(document.getElementById('chartSuccessRate'),{
+    type:'bar',
+    data:{
+      labels:sm,
+      datasets:[{
+        label:'Success Rate %',
+        data:sm.map(m=>+(SUCCESS[m].ok/SUCCESS[m].total*100).toFixed(1)),
+        backgroundColor:sm.map(m=>{
+          const v=SUCCESS[m].ok/SUCCESS[m].total*100;
+          return v>=95?'rgba(26,122,74,0.8)':v>=80?'rgba(184,92,0,0.8)':'rgba(183,28,28,0.8)';
+        }),
+        borderRadius:5, borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw}%`}}},
+      scales:{
+        x:{min:0,max:105,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+'%'}},
+        y:{grid:{display:false},ticks:{color:'rgba(0,0,0,0.7)',font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ─────────────── FAILURE MODES ───────────────
+{
+  const ms = MODELS;
+  new Chart(document.getElementById('chartFailureModes'),{
+    type:'bar',
+    data:{
+      labels:ms,
+      datasets:[
+        {label:'Success',        data:ms.map(m=>SUCCESS[m].ok), backgroundColor:'rgba(26,122,74,0.8)', borderRadius:4},
+        {label:'Empty Response', data:ms.map(m=>SUCCESS[m].empty), backgroundColor:'rgba(183,28,28,0.75)', borderRadius:4},
+        {label:'TTFT Killed',   data:ms.map(m=>SUCCESS[m].killed), backgroundColor:'rgba(230,81,0,0.8)', borderRadius:4},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10,boxHeight:10}}},
+      scales:{
+        x:{stacked:true,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.6)',font:{size:9},maxRotation:35}},
+        y:{stacked:true,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)'}}
+      }
+    }
+  });
+}
+
+// ─────────────── STACKED FULL ───────────────
+{
+  const passRaw = {'gemma3:4b':57,'qwen3:4b':49,'qwen3:8b':54,'deepseek-r1:8b':59,'gemma3:12b':64,'deepseek-r1:14b':52,'qwen3:14b':55,'gpt-oss:20b':61};
+  const semErr = {'gemma3:4b':18,'qwen3:4b':4,'qwen3:8b':7,'deepseek-r1:8b':4,'gemma3:12b':12,'deepseek-r1:14b':5,'qwen3:14b':3,'gpt-oss:20b':10};
+  const fmtErr = {'gemma3:4b':4,'qwen3:4b':2,'qwen3:8b':2,'deepseek-r1:8b':3,'gemma3:12b':3,'deepseek-r1:14b':2,'qwen3:14b':2,'gpt-oss:20b':0};
+  const serverFail = {'gemma3:4b':0,'qwen3:4b':25,'qwen3:8b':17,'deepseek-r1:8b':13,'gemma3:12b':0,'deepseek-r1:14b':17,'qwen3:14b':20,'gpt-oss:20b':7};
+
+  new Chart(document.getElementById('chartStacked'),{
+    type:'bar',
+    data:{
+      labels:MODELS,
+      datasets:[
+        {label:'Pass',          data:MODELS.map(m=>passRaw[m]),    backgroundColor:'rgba(26,122,74,0.85)'},
+        {label:'Semantic Error',data:MODELS.map(m=>semErr[m]),     backgroundColor:'rgba(183,28,28,0.75)'},
+        {label:'Format Error',  data:MODELS.map(m=>fmtErr[m]),     backgroundColor:'rgba(230,81,0,0.7)'},
+        {label:'Server Failure',data:MODELS.map(m=>serverFail[m]), backgroundColor:'rgba(100,100,100,0.6)'},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10,boxHeight:10}}},
+      scales:{
+        x:{stacked:true,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.6)',font:{size:10},maxRotation:30}},
+        y:{stacked:true,max:85,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+' items'}}
+      }
+    }
+  });
+}
+
+// ─────────────── RELIABILITY TABLE ───────────────
+{
+  const c = document.getElementById('reliabilityTable');
+  let html = '';
+  [...MODELS].sort((a,b)=>SUCCESS[b].ok/SUCCESS[b].total - SUCCESS[a].ok/SUCCESS[a].total).forEach(m=>{
+    const s = SUCCESS[m];
+    const rate = (s.ok/s.total*100).toFixed(1);
+    const barColor = +rate>=95?'#1a7a4a':+rate>=80?'#b85c00':'#b71c1c';
+    html += `<div class="progress-row">
+      <span class="pr-label">${m}</span>
+      <div class="pr-bar-wrap">
+        <div class="pr-bar" style="width:${rate}%;background:${barColor}"></div>
+      </div>
+      <span class="pr-val" style="color:${barColor}">${rate}%</span>
+      <span style="font-family:var(--mono);font-size:10px;color:#999;min-width:120px;margin-left:12px">
+        ${s.ok}/${s.total} ok
+        ${s.empty>0?`· <span style="color:#b71c1c">${s.empty} empty</span>`:''}
+        ${s.killed>0?`· <span style="color:#e07a2a">${s.killed} killed</span>`:''}
+      </span>
+    </div>`;
+  });
+  c.innerHTML = html;
+}
+
+// ─────────────── VERBOSITY ───────────────
+new Chart(document.getElementById('chartVerbosity'),{
+  type:'bar',
+  data:{
+    labels:MODELS,
+    datasets:[
+      {label:'Concise (<50 tok)',  data:MODELS.map(m=>OUTPUT_VERBOSITY[m].concise),  backgroundColor:'rgba(26,122,74,0.8)', borderRadius:3},
+      {label:'Medium (50-299)',    data:MODELS.map(m=>OUTPUT_VERBOSITY[m].medium),  backgroundColor:'rgba(21,101,192,0.8)', borderRadius:3},
+      {label:'Verbose (≥300 tok)', data:MODELS.map(m=>OUTPUT_VERBOSITY[m].verbose), backgroundColor:'rgba(230,81,0,0.8)',   borderRadius:3},
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10}}},
+    scales:{
+      x:{stacked:true, grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.6)',font:{size:9},maxRotation:35}},
+      y:{stacked:true, max:105, grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+'%'}}
+    }
+  }
+});
+
+// ─────────────── OUTPUT TOKENS MEDIAN ───────────────
+{
+  const sm=[...MODELS].sort((a,b)=>MED_OUT_TOKENS[a]-MED_OUT_TOKENS[b]);
+  new Chart(document.getElementById('chartOutputTokens'),{
+    type:'bar',
+    data:{
+      labels:sm,
+      datasets:[{
+        label:'Median output tokens',
+        data:sm.map(m=>MED_OUT_TOKENS[m]),
+        backgroundColor:sm.map(m=>{
+          const v=MED_OUT_TOKENS[m];
+          return v<=50?'rgba(26,122,74,0.8)':v<=200?'rgba(21,101,192,0.8)':'rgba(230,81,0,0.8)';
+        }),
+        borderRadius:5, borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} tokens`}}},
+      scales:{
+        x:{grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)'}},
+        y:{grid:{display:false},ticks:{color:'rgba(0,0,0,0.7)',font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ─────────────── TTFT vs OUTPUT TOKENS ───────────────
+{
+  const ms = MODELS;
+  new Chart(document.getElementById('chartTTFTvTokens'),{
+    type:'scatter',
+    data:{
+      datasets: ms.map(m=>({
+        label:m,
+        data:[{x:MED_OUT_TOKENS[m], y:+(median(TTFT_ALL[m])/1000).toFixed(1)}],
+        backgroundColor:modelColor(m,0.7),
+        borderColor:modelColor(m,1),
+        borderWidth:2,
+        pointRadius:10,
+        pointHoverRadius:14
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10,font:{size:10}}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.x} tok out, ${c.raw.y}s TTFT`}}
+      },
+      scales:{
+        x:{title:{display:true,text:'Median Output Tokens →',color:'rgba(0,0,0,0.4)'},grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)'},min:0},
+        y:{title:{display:true,text:'Median TTFT (s)',color:'rgba(0,0,0,0.4)'},grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+'s'},min:0,max:40}
+      }
+    }
+  });
+}
+
+// ─────────────── QUALITY BAR ───────────────
+{
+  const sm=[...MODELS].sort((a,b)=>QUALITY.overall[b]-QUALITY.overall[a]);
+  new Chart(document.getElementById('chartQuality'),{
+    type:'bar',
+    data:{
+      labels:sm,
+      datasets:[{
+        label:'Pass Rate %',
+        data:sm.map(m=>QUALITY.overall[m]),
+        backgroundColor:sm.map(m=>{
+          const v=QUALITY.overall[m];
+          return v>=75?'rgba(26,122,74,0.8)':v>=60?'rgba(184,92,0,0.8)':'rgba(183,28,28,0.8)';
+        }),
+        borderRadius:5, borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw}%`}}},
+      scales:{
+        x:{min:0,max:100,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+'%'}},
+        y:{grid:{display:false},ticks:{color:'rgba(0,0,0,0.7)',font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ─────────────── QUALITY RADAR ───────────────
+{
+  const TASK_LABELS=['Critical\nThinking','Physics','History','Logic','CS Eng'];
+  new Chart(document.getElementById('chartRadar'),{
+    type:'radar',
+    data:{
+      labels:['Critical','Physics','History','Logic','CS Eng'],
+      datasets:[
+        {label:'gemma3:12b',    data:QUALITY.tasks['gemma3:12b'],    borderColor:'rgba(18,90,55,1)', backgroundColor:'rgba(18,90,55,0.08)', pointBackgroundColor:'rgba(18,90,55,1)', borderWidth:2},
+        {label:'gpt-oss:20b',   data:QUALITY.tasks['gpt-oss:20b'],   borderColor:'rgba(106,27,154,1)', backgroundColor:'rgba(106,27,154,0.08)', pointBackgroundColor:'rgba(106,27,154,1)', borderWidth:2},
+        {label:'deepseek-r1:8b',data:QUALITY.tasks['deepseek-r1:8b'],borderColor:'rgba(230,81,0,1)', backgroundColor:'rgba(230,81,0,0.08)', pointBackgroundColor:'rgba(230,81,0,1)', borderWidth:2},
+        {label:'gemma3:4b',     data:QUALITY.tasks['gemma3:4b'],     borderColor:'rgba(26,122,74,1)', backgroundColor:'rgba(26,122,74,0.08)', pointBackgroundColor:'rgba(26,122,74,1)', borderWidth:2},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10,font:{size:9}}}},
+      scales:{r:{min:0,max:100,grid:{color:'rgba(0,0,0,0.08)'},angleLines:{color:'rgba(0,0,0,0.08)'},pointLabels:{color:'rgba(0,0,0,0.6)',font:{size:10}},ticks:{display:false}}}
+    }
+  });
+}
+
+// ─────────────── CHAT QUALITY ───────────────
+{
+  const ms = MODELS;
+  new Chart(document.getElementById('chartChatQuality'),{
+    type:'bar',
+    data:{
+      labels:ms,
+      datasets:[
+        {label:'Memory',       data:ms.map(m=>QUALITY.chat[m].memory),      backgroundColor:'rgba(21,101,192,0.8)', borderRadius:4},
+        {label:'Safety',       data:ms.map(m=>QUALITY.chat[m].safety),      backgroundColor:'rgba(26,122,74,0.8)', borderRadius:4},
+        {label:'Instruction',  data:ms.map(m=>QUALITY.chat[m].instruction), backgroundColor:'rgba(230,81,0,0.8)', borderRadius:4},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10,boxHeight:10}}},
+      scales:{
+        x:{grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.6)',font:{size:9},maxRotation:30}},
+        y:{min:0,max:110,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+'%'}}
+      }
+    }
+  });
+}
+
+// ─────────────── QUADRANT ───────────────
+{
+  // Latency score: convert median TTFT to 0-100 "speed score"
+  // Best TTFT=11000ms→100, Worst=60000ms→0
+  function latScore(m) {
+    const med = median(TTFT_ALL[m]);
+    return Math.max(0, Math.min(100, (1 - (med-11000)/49000)*100));
+  }
+
+  const ms = MODELS;
+  new Chart(document.getElementById('chartQuadrant'),{
+    type:'scatter',
+    data:{
+      datasets: ms.map(m=>({
+        label:m,
+        data:[{x:latScore(m), y:QUALITY.overall[m]}],
+        backgroundColor:modelColor(m,0.75),
+        borderColor:modelColor(m,1),
+        borderWidth:2,
+        pointRadius: Math.sqrt(SUCCESS[m].ok/SUCCESS[m].total)*8,
+        pointHoverRadius: 18
+      }))
+    },
+    plugins:[{
+      id:'quadlines',
+      beforeDraw(chart){
+        const {ctx,chartArea:{left,top,right,bottom},scales:{x,y}}=chart;
+        ctx.save();
+        ctx.strokeStyle='rgba(0,0,0,0.1)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(x.getPixelForValue(50),top); ctx.lineTo(x.getPixelForValue(50),bottom); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(left,y.getPixelForValue(70)); ctx.lineTo(right,y.getPixelForValue(70)); ctx.stroke();
+        // Labels
+        ctx.font='10px Overpass Mono,monospace'; ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.setLineDash([]);
+        ctx.fillText('⚡ Fast & Correct', x.getPixelForValue(52)+4, y.getPixelForValue(98));
+        ctx.fillText('Slow but Correct', x.getPixelForValue(2), y.getPixelForValue(98));
+        ctx.fillText('Fast but Wrong', x.getPixelForValue(52)+4, y.getPixelForValue(30));
+        ctx.fillText('Avoid', x.getPixelForValue(2), y.getPixelForValue(30));
+        ctx.restore();
+      }
+    }],
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:10,font:{size:10}}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label} · speed:${c.raw.x.toFixed(0)} · quality:${c.raw.y}%`}}
+      },
+      scales:{
+        x:{title:{display:true,text:'← Slower     Latency Score (inverted TTFT)     Faster →',color:'rgba(0,0,0,0.4)'},min:0,max:100,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)'}},
+        y:{title:{display:true,text:'Answer Quality %',color:'rgba(0,0,0,0.4)'},min:0,max:100,grid:{color:GRIDCOLOR},ticks:{color:'rgba(0,0,0,0.4)',callback:v=>v+'%'}}
+      }
+    }
+  });
+}
+
+// ─────────────── UX RADARS ───────────────
+{
+  function uxRadarData(m) {
+    const s = SUCCESS[m];
+    const rel = s.ok/s.total*100;
+    const lat = Math.max(0, (1 - (median(TTFT_ALL[m])-11000)/49000)*100);
+    const spd = Math.min(100, (TPS_ALL[m].length?median(TPS_ALL[m]):0)/100*100);
+    const qual = QUALITY.overall[m];
+    const inst = QUALITY.chat[m].instruction;
+    return [qual, rel, lat, spd, inst];
+  }
+  const RLABELS = ['Quality','Reliability','Latency','Speed','Instruction'];
+  const radarDefaults = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'rgba(0,0,0,0.5)',boxWidth:8,font:{size:9}}}},
+    scales:{r:{min:0,max:100,grid:{color:'rgba(0,0,0,0.08)'},angleLines:{color:'rgba(0,0,0,0.06)'},pointLabels:{color:'rgba(0,0,0,0.5)',font:{size:9}},ticks:{display:false}}}
+  };
+
+  const groups = [
+    ['radarA', ['gemma3:4b','gemma3:12b'], ['rgba(26,122,74,1)','rgba(18,90,55,1)'], ['rgba(26,122,74,0.08)','rgba(18,90,55,0.1)']],
+    ['radarB', ['qwen3:4b','qwen3:8b','deepseek-r1:8b'], ['rgba(21,101,192,1)','rgba(13,71,161,1)','rgba(230,81,0,1)'], ['rgba(21,101,192,0.06)','rgba(13,71,161,0.06)','rgba(230,81,0,0.06)']],
+    ['radarC', ['deepseek-r1:14b','qwen3:14b','gpt-oss:20b'], ['rgba(191,54,12,1)','rgba(26,35,126,1)','rgba(106,27,154,1)'], ['rgba(191,54,12,0.06)','rgba(26,35,126,0.06)','rgba(106,27,154,0.06)']],
+  ];
+
+  groups.forEach(([id, models, borders, bgs]) => {
+    new Chart(document.getElementById(id),{
+      type:'radar',
+      data:{
+        labels:RLABELS,
+        datasets:models.map((m,i)=>({
+          label:m,
+          data:uxRadarData(m),
+          borderColor:borders[i], backgroundColor:bgs[i],
+          pointBackgroundColor:borders[i], borderWidth:2
+        }))
+      },
+      options:radarDefaults
+    });
+  });
+}
+
+// ─────────────── VERDICT CARDS ───────────────
+{
+  const VERDICTS = {
+    'gemma3:12b':   {v:'deploy',  tag:'⭐ Best All-Round', note:'Top quality (80%), perfect reliability, fastest latency. The clear default choice for production.'},
+    'gemma3:4b':    {v:'deploy',  tag:'🚀 Best UX Speed', note:'Fastest generation (up to 145 tok/s), perfect reliability, lowest latency. Ideal for latency-sensitive apps.'},
+    'gpt-oss:20b':  {v:'deploy',  tag:'🎯 Best Quality/Size', note:'Best quality-per-param (76.2%), MXFP4 quantization. Good reliability. Worth the larger footprint.'},
+    'deepseek-r1:8b': {v:'caution', tag:'⚠ Caution: Stability', note:'Strong quality (73.8%) and safety scores, but 16% empty-response failures. Needs stability fix before production.'},
+    'qwen3:8b':     {v:'caution', tag:'⚠ Caution: Stability', note:'Good critical thinking, but 21% empty-response failures and ~44 tok/s ceiling. Reliability is main blocker.'},
+    'deepseek-r1:14b': {v:'caution', tag:'⚠ Caution: Latency + Stability', note:'Verbose reasoning inflates output; 22% failures. Slowest real-time stream (26 tok/s). Use only if quality matters more than speed.'},
+    'qwen3:14b':    {v:'caution', tag:'⚠ Caution: High Risk', note:'Worst latency in its class (median 30.7s TTFT, 22.5% failures). Would need significant stability work.'},
+    'qwen3:4b':     {v:'caution', tag:'⚠ Caution: Stability', note:'31% empty-response failures is too high. When it works, speed is fine, but UX is unpredictable.'},
+  };
+
+  const c = document.getElementById('verdictCards');
+  sortedByComposite.forEach(m => {
+    const vd = VERDICTS[m];
+    const sc = SCORES[m];
+    const cls = vd.v==='deploy'?'vp-deploy':vd.v==='caution'?'vp-caution':'vp-avoid';
+    const accentColor = vd.v==='deploy'?'var(--green)':vd.v==='caution'?'var(--amber)':'var(--red)';
+    c.innerHTML += `
+      <div class="finding-card" style="--accent:${accentColor}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-family:var(--mono);font-size:11px;color:rgba(0,0,0,0.4);margin-bottom:3px">${MODEL_PARAMS[m].params}B · ${MODEL_PARAMS[m].quant}</div>
+            <div class="fc-title">${m}</div>
+          </div>
+          <span class="verdict-pill ${cls}">${vd.tag}</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:${accentColor};margin-bottom:6px">${sc.composite.toFixed(1)}<span style="font-size:12px;color:rgba(0,0,0,0.3);font-weight:400">/100</span></div>
+        <div class="fc-body">${vd.note}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:14px;">
+          ${[
+            ['Reliability', sc.raw.successRate.toFixed(0)+'%'],
+            ['Latency', (sc.raw.medTTFT/1000).toFixed(1)+'s'],
+            ['Quality', sc.raw.qualityPct.toFixed(0)+'%'],
+            ['Speed', sc.raw.medTPS.toFixed(0)+' t/s'],
+          ].map(([l,v])=>`<div style="background:var(--paper2);border-radius:6px;padding:8px;text-align:center;">
+            <div style="font-family:var(--mono);font-size:10px;color:rgba(0,0,0,0.35)">${l}</div>
+            <div style="font-family:var(--sans);font-size:14px;font-weight:700">${v}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+  });
+}
+
+// ─────────────── FINDINGS ───────────────
+{
+  const finds = [
+    {icon:'⚡',color:'var(--green)',title:'gemma3 = The Latency Champions',body:'Both gemma3 models achieve median TTFT of 11.1–11.4s with zero variance and zero failures. Their fixed TTFT regardless of output length suggests efficient KV-cache prefill — a key architectural advantage for streaming chats.'},
+    {icon:'💥',color:'var(--red)',title:'Empty Response: Ollama Memory Pressure',body:'Non-zero output tokens but ttft=0 means Ollama returned HTTP 200 with empty body — characteristic of OOM/memory-pressure crashes. All affected models (qwen3, deepseek-r1, gpt-oss) share 8-14B parameters suggesting a RAM ceiling around 10–12GB active.'},
+    {icon:'📊',color:'var(--blue)',title:'TPS is Fully Hardware-Constrained',body:'qwen3:8b and deepseek-r1:8b both show ±0.5 tok/s variance over 60+ calls — effectively a hardware constant. gpt-oss:20b\'s MXFP4 quantization achieves 46 tok/s vs 26 tok/s for comparable Q4_K_M models, showing quant impact.'},
+    {icon:'🔤',color:'var(--amber)',title:'Verbosity Doubles Total Response Time',body:'deepseek-r1:8b outputs 370 tok median vs gemma3:12b\'s 4 tokens — a 92× difference. Even at the same tok/s, a 370-token response takes ~8.5s to stream after TTFT. For a chat app, concise models feel dramatically faster end-to-end.'},
+    {icon:'📐',color:'var(--violet)',title:'Instruction Following: Nobody Excels',body:'No model scored above 70% on chat_instruction. 25-word sunset descriptions and 30-word gravity explanations fail consistently across all sizes. This is a local model limitation vs hosted models — constraint compliance needs fine-tuning, not just scale.'},
+    {icon:'🛡️',color:'var(--green)',title:'Safety: Small Models Can Be Safe',body:'gemma3:4b (90%) and gemma3:12b (100%) both match or exceed deepseek-r1:8b (100%) on safety. Safety behavior is aligned via training, not raw capability — small 4B models can be production-safe.'},
+  ];
+  const c = document.getElementById('findingsGrid');
+  finds.forEach(f=>{
+    c.innerHTML += `<div class="finding-card" style="--accent:${f.color}">
+      <div class="fc-icon">${f.icon}</div>
+      <div class="fc-title">${f.title}</div>
+      <div class="fc-body">${f.body}</div>
+    </div>`;
+  });
+}
+</script>
+<footer class="docs-footer">
+  <a href="/docs/benchmark.html" class="docs-footer-prev">← Benchmarks</a>
+  <a href="/docs/benchmark_monitor.html" class="docs-footer-next">Benchmark Monitor →</a>
+</footer>
+</main>
+<script src="/js/docs_theme.js"></script>
+</body>
+</html>

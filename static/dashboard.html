@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+  <title>Dashboard · My private GPT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    .table-highlight{
+      background-color:#fef3c7 !important;
+    }
+    .dark .table-highlight{
+      background-color:rgba(251,191,36,0.15) !important;
+    }
+    .stats-card{
+      background:var(--panel);
+      border:1px solid var(--border);
+    }
+    .stats-banner{
+      background:transparent;
+      border:0;
+      color:inherit;
+      font:inherit;
+      padding:0;
+    }
+    .stats-surface{
+      background:var(--panel-alt);
+      border:1px solid var(--border);
+      position:relative;
+      overflow:hidden;
+    }
+    .stats-header-controls{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:10px;
+    }
+    .stats-filter{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:500;
+      line-height:1;
+    }
+    .stats-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:5px 10px;
+      border-radius:999px;
+      border:1px solid var(--toggle-border);
+      background:var(--toggle-bg);
+      color:var(--muted);
+      font-size:12px;
+      font-weight:500;
+      line-height:1;
+    }
+    .stats-input{
+      width:78px;
+      height:28px;
+      padding:5px 8px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--ink);
+      font-size:12px;
+      line-height:1.2;
+    }
+    .stats-nav-title{
+      font-size:13px;
+      font-weight:500;
+      color:var(--muted);
+    }
+    .stats-nav-spacer{
+      flex:1;
+    }
+    .docs-nav{
+      border-bottom:none;
+    }
+    .docs-nav::after{
+      content:'';
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:-18px;
+      height:18px;
+      background:linear-gradient(180deg, var(--panel) 0%, rgba(0,0,0,0) 100%);
+      pointer-events:none;
+    }
+    .stats-nav-back{
+      padding:5px 10px;
+      font-weight:500;
+    }
+    .stats-refresh{
+      padding:5px 10px;
+      font-size:12px;
+      font-weight:500;
+      line-height:1;
+    }
+    .stats-status{
+      flex:1;
+      display:flex;
+      justify-content:center;
+    }
+    .stats-content{
+      position:relative;
+    }
+    .stats-toast{
+      position:absolute;
+      top:92px;
+      left:50%;
+      transform:translate(-50%, -60%);
+      pointer-events:none;
+      z-index:12;
+    }
+    .stats-banner{
+      opacity:1;
+      transition:opacity 1.5s ease;
+      font-size:13px;
+      font-weight:500;
+    }
+    .user-spark-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .user-spark-row{
+      display:grid;
+      grid-template-columns:minmax(90px, 1fr) minmax(120px, 2fr) auto;
+      align-items:center;
+      gap:10px;
+      padding:6px 8px;
+      border-radius:12px;
+      border:1px solid transparent;
+      background:transparent;
+      color:inherit;
+      text-align:left;
+      cursor:pointer;
+    }
+    .user-spark-row:hover{
+      background:var(--panel-alt);
+      border-color:var(--border);
+    }
+    .user-spark-row.muted{
+      opacity:0.5;
+    }
+    .user-spark-row.active{
+      background:var(--panel-alt);
+      border-color:var(--border);
+    }
+    .user-spark-name{
+      font-size:12px;
+      font-weight:600;
+      color:var(--ink);
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .user-spark-count{
+      font-size:12px;
+      font-weight:600;
+      color:var(--muted);
+      text-align:right;
+    }
+    .user-sparkline{
+      width:100%;
+      height:28px;
+    }
+    .user-sparkline path{
+      fill:none;
+      stroke:#93c5fd;
+      stroke-width:2;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
+    .user-sparkline .spark-bg{
+      stroke:#e2e8f0;
+      stroke-width:1;
+      stroke-linecap:round;
+    }
+    #countryTable td{
+      padding-top:2px;
+      padding-bottom:2px;
+    }
+    #countryTable td:nth-child(2){
+      text-align:right;
+    }
+    .stats-banner.fade-out{
+      opacity:0;
+    }
+    @media (max-width: 640px){
+      html, body{
+        overflow-x:hidden;
+      }
+      .docs-content.stats-content{
+        max-width:100%;
+        width:100%;
+        padding-left:12px;
+        padding-right:12px;
+      }
+      .stats-header-controls{
+        gap:6px;
+      }
+      .stats-filter{
+        gap:6px;
+        font-size:11px;
+      }
+      .stats-input{
+        width:60px;
+        height:26px;
+        padding:4px 6px;
+        font-size:11px;
+      }
+      .stats-refresh{
+        padding:4px 8px;
+        font-size:11px;
+      }
+      .stats-nav-back{
+        padding:4px 8px;
+        font-size:12px;
+      }
+      .stats-pill{
+        padding:4px 8px;
+        font-size:11px;
+      }
+      .stats-card{
+        width:100%;
+        min-width:0;
+        padding:12px;
+        border-radius:16px;
+      }
+      .stats-card .text-3xl{
+        font-size:22px;
+      }
+      .stats-card .text-lg{
+        font-size:15px;
+      }
+      .stats-card .text-sm{
+        font-size:11px;
+      }
+      .stats-surface{
+        border-radius:14px;
+      }
+      button.rounded-full,
+      a.rounded-full{
+        padding:4px 8px !important;
+        font-size:11px;
+      }
+    }
+    #recentTable td:nth-child(4){
+      text-align:left;
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/js/echarts.min.js" id="local-echarts" data-offline="true"></script>
+  <script>
+    if (!window.echarts) {
+      const fallback = document.createElement('script');
+      fallback.src = 'https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js';
+      fallback.defer = true;
+      document.head.appendChild(fallback);
+    }
+  </script>
+  <script src="/js/echarts-world.js" id="local-world-map" data-offline="true"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body class="text-slate-900 dark:text-slate-100 font-sans">
+  <nav class="docs-nav">
+    <a href="/?enter=1" class="docs-nav-back stats-nav-back">← app</a>
+    <div class="stats-nav-spacer"></div>
+    <div class="stats-header-controls">
+      <label class="stats-filter" style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-right:12px;">
+        <input id="hideLocalToggle" type="checkbox" style="cursor:pointer;"/>
+        <span style="font-size:12px;">Public only</span>
+      </label>
+      <label class="stats-filter">
+        Last
+        <input id="rangeInput" type="number" min="10" max="100000" step="10" value="500"
+               class="stats-input" />
+      </label>
+      <button id="refreshBtn" class="btn stats-refresh">
+        Sync
+      </button>
+    </div>
+  </nav>
+  <main class="docs-content stats-content" style="max-width:1100px;">
+    <div class="stats-toast" aria-live="polite">
+      <p id="statusBanner" class="stats-banner toast-surface">Loading analytics…</p>
+    </div>
+    <section class="mt-2 grid gap-4 md:grid-cols-3">
+      <div class="stats-card rounded-2xl p-4 shadow-sm">
+        <p class="text-sm text-slate-500 dark:text-slate-400">Unique users</p>
+        <p id="metricUsers" class="mt-1 text-3xl font-semibold">–</p>
+      </div>
+      <div class="stats-card rounded-2xl p-4 shadow-sm">
+        <p class="text-sm text-slate-500 dark:text-slate-400">Unique IPs</p>
+        <p id="metricIps" class="mt-1 text-3xl font-semibold">–</p>
+      </div>
+      <div class="stats-card rounded-2xl p-4 shadow-sm">
+        <p class="text-sm text-slate-500 dark:text-slate-400">Active users (10m)</p>
+        <p id="metricActiveUsers" class="mt-1 text-3xl font-semibold">–</p>
+      </div>
+    </section>
+
+    <section class="mt-2 grid gap-6 lg:grid-cols-3">
+      <div class="stats-card rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold">World</h2>
+          <div class="flex items-center gap-3">
+            <span id="mapSubtitle" class="text-sm text-slate-500">No data</span>
+            <button id="clearCountryFilter" class="hidden text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Clear filter</button>
+          </div>
+        </div>
+        <div id="worldMap" class="stats-surface h-80 w-full rounded-xl"></div>
+      </div>
+      <div class="stats-card rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold">Countries</h2>
+          <span id="countryCount" class="text-sm text-slate-500"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-left text-sm">
+            <thead>
+              <tr class="text-slate-500">
+                <th class="py-2 pr-3">Country</th>
+                <th class="py-2 pr-3 text-right">Requests</th>
+              </tr>
+            </thead>
+            <tbody id="countryTable" class="divide-y divide-slate-100 dark:divide-slate-800 text-[11px] country-rows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="stats-card rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold">Recent</h2>
+          <div class="flex items-center gap-3">
+            <span id="recentMapSubtitle" class="text-sm text-slate-500">No data</span>
+            <button id="clearRecentFilter" class="hidden text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Clear filter</button>
+          </div>
+        </div>
+        <div id="recentScatter" class="stats-surface h-80 w-full rounded-xl"></div>
+      </div>
+    </section>
+
+    <section class="mt-2 grid gap-6 lg:grid-cols-3">
+      <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#212121]">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold">Users</h2>
+          <div class="flex items-center gap-3">
+            <span id="userChartSubtitle" class="text-sm text-slate-500">Last 60 min</span>
+            <button id="clearUserFilter" class="hidden text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Clear filter</button>
+          </div>
+        </div>
+        <div id="userChart" class="w-full rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800 dark:bg-[#1a1a1a] p-3">
+          <div class="user-spark-list"></div>
+        </div>
+      </div>
+      <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#212121]">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold">API groups</h2>
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-slate-500">Total hits</span>
+            <button id="clearGroupFilter" class="hidden text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Clear filter</button>
+          </div>
+        </div>
+        <div id="pathStacked" class="h-80 w-full rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800 dark:bg-[#1a1a1a]"></div>
+      </div>
+      <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#212121]">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold">Group detail</h2>
+          <span id="groupDetailSubtitle" class="text-sm text-slate-500">Click to drill</span>
+        </div>
+        <div id="groupDetailChart" class="h-80 w-full rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-800 dark:bg-[#1a1a1a]"></div>
+      </div>
+    </section>
+
+    <section class="mt-2 rounded-2xl bg-white p-4 shadow-sm dark:bg-[#212121]">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold">Detailed information</h2>
+        <div class="flex items-center gap-3">
+          <span id="recentCount" class="text-sm text-slate-500"></span>
+        </div>
+      </div>
+      <div class="mb-3 flex flex-wrap items-center gap-3 text-xs text-slate-500 sm:text-sm">
+        <label class="flex items-center gap-2">
+          Rows per page
+          <input id="pageSizeInput" type="number" min="25" max="1000" step="25" value="50"
+                 class="w-24 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 dark:border-slate-600 dark:bg-[#212121] dark:text-slate-100 sm:text-sm" />
+        </label>
+        <div class="flex items-center gap-2">
+          <button id="pagePrev" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-white disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 sm:text-sm">Prev</button>
+          <span id="pageInfo" class="text-xs text-slate-500 sm:text-sm">Page 1 of 1</span>
+          <button id="pageNext" class="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-white disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 sm:text-sm">Next</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-left text-xs sm:text-sm">
+          <thead>
+            <tr class="text-slate-500">
+              <th class="py-2 pr-3 text-center">Timestamp (UTC)</th>
+              <th class="py-2 pr-3 text-center">User</th>
+              <th class="py-2 pr-3 text-center">Method</th>
+              <th class="py-2 pr-3">Path</th>
+              <th class="py-2 pr-3 text-center">IP</th>
+              <th class="py-2 pr-3 text-center">Country</th>
+              <th class="py-2 pr-3 text-center">Group</th>
+              <th class="py-2 pr-3 text-center">Action</th>
+              <th class="py-2 pr-3 text-center">User agent</th>
+            </tr>
+          </thead>
+          <tbody id="recentTable" class="divide-y divide-slate-100 dark:divide-slate-800 text-[11px] text-center"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/dashboard_geo.js"></script>
+  <script src="/js/dashboard_analytics.js"></script>
+  <script src="/js/dashboard_charts.js"></script>
+  <script src="/js/dashboard_tables.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

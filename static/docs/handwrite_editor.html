@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+  <title>WYSIWYG Editor: About Page</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+  <style>
+    .editor-shell { max-width: 1200px; margin: 24px auto; padding: 0 16px 40px; }
+    .editor-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      background: var(--panel);
+      margin-bottom: 12px;
+      position: sticky;
+      top: 12px;
+      z-index: 20;
+    }
+    .editor-toolbar button {
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 8px 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .editor-toolbar button:hover { filter: brightness(0.97); }
+    .editor-canvas {
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      background: var(--panel);
+      min-height: 65vh;
+      padding: 20px;
+      outline: none;
+      line-height: 1.6;
+    }
+    .editor-status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted-ink);
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← Back to app</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Index</a>
+      <a href="/docs/handwrite.html">About</a>
+      <a href="/docs/handwrite_editor.html" class="active">Edit About</a>
+    </div>
+  </nav>
+
+  <main class="editor-shell">
+    <header class="docs-header" style="margin-bottom: 12px;">
+      <h1>WYSIWYG Editor: About Page</h1>
+      <p>Edits are applied to <code>static/docs/handwrite.html</code>.</p>
+    </header>
+
+    <section class="editor-toolbar" aria-label="Formatting tools">
+      <button type="button" data-cmd="undo">Undo</button>
+      <button type="button" data-cmd="redo">Redo</button>
+      <button type="button" data-cmd="bold">Bold</button>
+      <button type="button" data-cmd="italic">Italic</button>
+      <button type="button" data-cmd="insertUnorderedList">Bullet list</button>
+      <button type="button" data-cmd="insertOrderedList">Numbered list</button>
+      <button type="button" data-cmd="formatBlock" data-value="h2">H2</button>
+      <button type="button" data-cmd="formatBlock" data-value="h3">H3</button>
+      <button type="button" data-cmd="formatBlock" data-value="p">Paragraph</button>
+      <button type="button" id="fontMinusBtn" aria-label="Decrease font size">-</button>
+      <button type="button" id="fontPlusBtn" aria-label="Increase font size">+</button>
+      <button type="button" id="linkBtn">Link</button>
+      <button type="button" id="loadBtn">Reload from file</button>
+      <button type="button" id="saveBtn">Save to handwrite.html</button>
+    </section>
+
+    <article id="editor" class="editor-canvas" contenteditable="true" spellcheck="true" aria-label="Editable about page content"></article>
+    <p id="status" class="editor-status"></p>
+  </main>
+
+  <script src="/js/handwrite_editor.js"></script>
+  <script src="/js/docs_theme.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pills Data Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .pill {
+            display: inline-block;
+            margin: 4px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #666;
+            background: #2a2a2a;
+        }
+        .active { background: rgba(59, 130, 246, 0.3); border-color: #3b82f6; }
+        .completed { background: rgba(34, 197, 94, 0.3); border-color: #22c55e; }
+        .failed { background: rgba(239, 68, 68, 0.3); border-color: #ef4444; }
+        .pending { background: rgba(148, 163, 184, 0.2); border-color: #94a3b8; }
+        pre {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pills Data Test</h1>
+    <p><button onclick="loadData()">Reload Data</button></p>
+    
+    <h2>Datasets Overview</h2>
+    <div id="datasets"></div>
+    
+    <h2>Current Dataset Tasks</h2>
+    <div id="tasks"></div>
+    
+    <h2>Raw API Response</h2>
+    <pre id="raw"></pre>
+
+    <script>
+        async function loadData() {
+            const resp = await fetch('/api/benchmark/status');
+            const data = await resp.json();
+            
+            document.getElementById('raw').textContent = JSON.stringify(data, null, 2).substring(0, 2000);
+            
+            const datasetsContainer = document.getElementById('datasets');
+            datasetsContainer.innerHTML = '';
+            const datasets = data.datasets_overview?.datasets || [];
+            console.log('Datasets count:', datasets.length);
+            datasets.forEach(ds => {
+                const pill = document.createElement('div');
+                pill.className = `pill ${ds.status}`;
+                pill.textContent = `${ds.dataset_label} (${ds.completed}/${ds.total})`;
+                datasetsContainer.appendChild(pill);
+            });
+            
+            const tasksContainer = document.getElementById('tasks');
+            tasksContainer.innerHTML = '';
+            const tasks = data.current_dataset_tasks?.tasks || [];
+            console.log('Tasks count:', tasks.length);
+            if (tasks.length === 0) {
+                tasksContainer.innerHTML = '<em>No active tasks</em>';
+            } else {
+                tasks.forEach(task => {
+                    const pill = document.createElement('div');
+                    pill.className = `pill ${task.status}`;
+                    pill.textContent = task.label;
+                    tasksContainer.appendChild(pill);
+                });
+            }
+        }
+        
+        loadData();
+        setInterval(loadData, 5000);
+    </script>
+</body>
+</html>

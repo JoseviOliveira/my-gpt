@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Client Logs</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <style>
+    body, html { height: 100%; }
+    .log-screen {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      color: var(--ink);
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .log-screen h1 { margin: 0 0 12px; font-size: 18px; }
+    #logOutput {
+      flex: 1;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      white-space: pre-wrap;
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+  <div class="log-screen">
+    <h1>Browser Console Logs</h1>
+    <pre id="logOutput"></pre>
+  </div>
+  <script>
+    const pad = (num) => String(num).padStart(2, '0');
+    const formatTimestamp = (date = new Date()) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    const output = document.getElementById('logOutput');
+    window.addEventListener('message', (event) => {
+      if (!event.data || event.data.type !== 'client-log') return;
+      const { level, args } = event.data.payload;
+      const time = formatTimestamp();
+      output.textContent += `[${time}] [${level}] ${args.join(' ')}\n`;
+      output.scrollTop = output.scrollHeight;
+    });
+  </script>
+</body>
+</html>

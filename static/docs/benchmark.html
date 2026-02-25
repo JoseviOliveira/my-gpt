@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try { theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+        catch { theme = 'light'; }
+      }
+      if (theme === 'dark') { root.dataset.theme = 'dark'; root.classList.add('dark'); }
+    })();
+  </script>
+  <title>Benchmark Report</title>
+  <meta name="description" content="Scientific benchmark comparison across 8 local LLMs on the 9cc182d7 run.">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+  <style>
+    .report-meta { display: flex; flex-wrap: wrap; gap: 16px 32px; padding: 16px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+    .report-meta-item { display: flex; flex-direction: column; gap: 2px; }
+    .report-meta-label { font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; color: var(--muted); }
+    .report-meta-value { color: var(--ink); font-size: 14px; }
+    .axis-card { display: flex; gap: 16px; padding: 16px; background: rgba(14, 165, 233, 0.04); border-radius: 12px; border: 1px solid var(--border); }
+    .axis-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 24px; flex-shrink: 0; }
+    .axis-content { flex: 1; }
+    .axis-content h4 { margin: 0 0 4px; }
+    .axis-content p { margin: 0; font-size: 14px; }
+    .axis-1 .axis-icon { background: rgba(239, 68, 68, 0.15); }
+    .axis-2 .axis-icon { background: rgba(34, 197, 94, 0.15); }
+    .axis-3 .axis-icon { background: rgba(59, 130, 246, 0.15); }
+    .axis-4 .axis-icon { background: rgba(168, 85, 247, 0.15); }
+    .axis-5 .axis-icon { background: rgba(249, 115, 22, 0.15); }
+    .formula-box { padding: 16px; background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 10px; font-family: monospace; font-size: 14px; text-align: center; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .stat-card { padding: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--accent); }
+    .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .result-highlight { padding: 20px; background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(168, 85, 247, 0.08)); border-radius: 16px; border: 1px solid var(--border); }
+    .compact-table td, .compact-table th { padding: 8px 10px; font-size: 13px; }
+    .model-rank-1 { background: rgba(255, 215, 0, 0.15); }
+    .model-rank-2 { background: rgba(192, 192, 192, 0.15); }
+    .model-rank-3 { background: rgba(205, 127, 50, 0.15); }
+    .failure-item { padding: 12px; background: rgba(239, 68, 68, 0.06); border-radius: 8px; border-left: 3px solid #ef4444; margin-bottom: 12px; }
+    .case-note {
+      padding: 14px;
+      background: rgba(14, 165, 233, 0.06);
+      border-radius: 10px;
+      border-left: 3px solid #0ea5e9;
+      margin-bottom: 12px;
+    }
+    .radar-wrapper { margin: 24px 0; }
+    .radar-echart { width: 100%; height: 560px; }
+    .table-sort-btn {
+      margin-left: 6px;
+      padding: 0 2px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+      line-height: 1;
+      vertical-align: middle;
+    }
+    .table-sort-btn:hover,
+    .table-sort-btn:focus-visible {
+      color: var(--ink);
+      outline: none;
+    }
+    th.is-sorted {
+      color: var(--ink);
+    }
+    .docs-table th.col-text,
+    .docs-table td.col-text {
+      text-align: left;
+    }
+    .docs-table th.col-numeric,
+    .docs-table td.col-numeric {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← Back to app</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Index</a>
+      <a href="/docs/user.html">User Guide</a>
+      <a href="/docs/architecture.html">Architecture</a>
+      <a href="/docs/engineering.html">Engineering</a>
+      <a href="/docs/installation.html">Installation</a>
+      <a href="/docs/audience.html">Audience</a>
+      <a href="/docs/handwrite.html">About</a>
+      <a href="/docs/benchmark.html" class="active">Benchmarks</a>
+      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
+
+    </div>
+  </nav>
+
+  <main class="docs-content">
+    <header class="docs-header">
+      <h1>Benchmark Report</h1>
+      <p>A quantitative assessment of 8 local models on Apple Silicon using the KISS benchmark framework.</p>
+    </header>
+
+    <section class="docs-section">
+      <div class="report-meta">
+        <div class="report-meta-item"><span class="report-meta-label">Run ID</span><span class="report-meta-value"><code>9cc182d7...</code></span></div>
+        <div class="report-meta-item"><span class="report-meta-label">Date</span><span class="report-meta-value">2026-02-09</span></div>
+        <div class="report-meta-item"><span class="report-meta-label">Run Status</span><span class="report-meta-value">completed</span></div>
+        <div class="report-meta-item"><span class="report-meta-label">Models</span><span class="report-meta-value">8</span></div>
+        <div class="report-meta-item"><span class="report-meta-label">Tasks</span><span class="report-meta-value">640</span></div>
+        <div class="report-meta-item"><span class="report-meta-label">Ollama</span><span class="report-meta-value">ollama version is 0.13.5</span></div>
+      </div>
+    </section>
+
+    <section class="docs-section">
+      <h2>Abstract</h2>
+      <p>This report presents a scientific evaluation of run <code>9cc182d7-74c0-4ac2-a0eb-3ed86afd142b</code> using the following analysis axes: responsiveness, streaming quality, chat accuracy, task versatility, and thermal stability.</p>
+      <p>Task versatility is decomposed into Math, Reasoning, and Instruction, yielding a 7-axis comparative radar profile per model.</p>
+      <p>The final distribution is <strong>401/640 passed (62.7%)</strong> and <strong>239/640 failed (37.3%)</strong> after GPT Codex 5.3 semantic re-judging of shortform samples.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Key Findings</h2>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-value">8</div><div class="stat-label">Models Evaluated</div></div>
+        <div class="stat-card"><div class="stat-value">640</div><div class="stat-label">Total Tasks</div></div>
+        <div class="stat-card"><div class="stat-value">54.5%</div><div class="stat-label">Avg Shortform Accuracy</div></div>
+        <div class="stat-card"><div class="stat-value">62.7%</div><div class="stat-label">Global Pass Rate</div></div>
+      </div>
+      <div class="result-highlight" style="margin-top: 20px;">
+        <h3 style="margin-top:0;">Principal Conclusions</h3>
+        <ol>
+          <li><strong>Best composite model:</strong> <code>gemma3:4b</code> with fitness 88.7/100.</li>
+          <li><strong>Fastest response:</strong> <code>gemma3:4b</code> at 11.2s mean TTFT.</li>
+          <li><strong>Highest throughput:</strong> <code>gemma3:4b</code> at 89.3 tok/s.</li>
+          <li><strong>Highest task reliability:</strong> <code>gemma3:12b</code> with 77.5% pass rate.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="docs-section">
+      <h2>1. Introduction</h2>
+      <h3>1.1 Motivation</h3>
+      <p>The objective is to derive operational model rankings from observed benchmark behavior under a unified local-inference environment.</p>
+      <h3>1.2 Scope</h3>
+      <p>Scope includes eight models over eight datasets (five shortform + three chat), totaling 640 model-task evaluations.</p>
+      <h3>1.3 Experimental Endpoint</h3>
+      <p>All tasks in scope are terminally labeled and included in comparative statistics.</p>
+      <h3>1.4 Benchmark Monitor Companion</h3>
+      <p>The companion page <a href="/docs/benchmark_monitor.html"><code>benchmark_monitor.html</code></a> is a read-only, database-backed monitor for ongoing runs and is the fastest way to understand benchmark execution in real time: it shows run scope and state (models/datasets/tasks), rolling performance telemetry (TTFT, tok/s, CPU, GPU utilization, GPU temperature, disk I/O), dataset-level completion with per-task pills that switch from progress to pass-rate as each dataset closes, and a detailed “Last Task Executed” panel with workflow stage, prompt, streaming response, evaluation result, and task KPIs; it also handles resets/resume correctly by tracking run identity and live task events, so readers can trust what they see even when a run restarts, resumes, or is only partially completed. Open it directly from this report at <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>2. Methodology</h2>
+      <h3>2.1 Five Principal Axes</h3>
+      <div class="axis-card axis-1" style="margin-bottom: 12px;"><div class="axis-icon">⚡</div><div class="axis-content"><h4>Axis 1: Responsiveness (TTFT)</h4><p>Lower TTFT maps to higher normalized score.</p></div></div>
+      <div class="axis-card axis-2" style="margin-bottom: 12px;"><div class="axis-icon">🌊</div><div class="axis-content"><h4>Axis 2: Streaming Quality (tok/s)</h4><p>Higher sustained token throughput maps to higher score.</p></div></div>
+      <div class="axis-card axis-3" style="margin-bottom: 12px;"><div class="axis-icon">💬</div><div class="axis-content"><h4>Axis 3: Chat Accuracy</h4><p>Measured as pass rate over chat_instruction, chat_memory, and chat_safety tracks.</p></div></div>
+      <div class="axis-card axis-4" style="margin-bottom: 12px;"><div class="axis-icon">🎯</div><div class="axis-content"><h4>Axis 4: Task Versatility</h4><p>Decomposed into Math (cs+physics), Reasoning (critical+logic), and Instruction (chat_instruction).</p></div></div>
+      <div class="axis-card axis-5" style="margin-bottom: 12px;"><div class="axis-icon">🌡️</div><div class="axis-content"><h4>Axis 5: Thermal Stability</h4><p>Lower mean GPU temperature maps to higher normalized thermal score.</p></div></div>
+
+      <h3>2.2 Scoring Formula</h3>
+      <p>Composite fitness follows the benchmark family weighting:</p>
+      <div class="formula-box">fitness = 0.50 × chat_ux + 0.30 × speed + 0.20 × shortform_quality</div>
+      <p style="margin-top: 12px; font-size: 14px; color: var(--muted);">where <code>speed = 0.6 × TTFT_score + 0.4 × throughput_score</code>.</p>
+
+      <h3>2.3 Hardware Configuration</h3>
+      <div class="docs-table-wrap"><table class="docs-table compact-table"><thead><tr><th>Component</th><th>Specification</th></tr></thead><tbody>
+      <tr><td>Device</td><td>Mac mini M4 Pro</td></tr>
+      <tr><td>CPU</td><td>Apple M4 Pro, 12-core</td></tr>
+      <tr><td>GPU</td><td>16-core integrated</td></tr>
+      <tr><td>Unified RAM</td><td>24 GB</td></tr>
+      <tr><td>Inference Engine</td><td>ollama version is 0.13.5</td></tr>
+      </tbody></table></div>
+
+      <h3>2.4 Model Registry</h3>
+      <div class="docs-table-wrap"><table class="docs-table compact-table"><thead><tr><th>Model</th><th>Origin</th><th>Params</th><th>Quant</th><th>Architecture</th><th>Warmup TTFT</th></tr></thead><tbody><tr><td><code>deepseek-r1:14b</code></td><td>DeepSeek</td><td>14.1B</td><td>Q4_K_M</td><td>Reasoning-heavy</td><td>11.1s</td></tr><tr><td><code>deepseek-r1:8b</code></td><td>DeepSeek</td><td>8.2B</td><td>Q4_K_M</td><td>Reasoning-heavy</td><td>7.7s</td></tr><tr><td><code>gemma3:12b</code></td><td>Google</td><td>12.2B</td><td>Q4_K_M</td><td>Direct-response</td><td>9.5s</td></tr><tr><td><code>gemma3:4b</code></td><td>Google</td><td>4.3B</td><td>Q4_K_M</td><td>Direct-response</td><td>5.6s</td></tr><tr><td><code>gpt-oss:20b</code></td><td>OpenAI</td><td>20.9B</td><td>MXFP4</td><td>Reasoning-heavy</td><td>11.2s</td></tr><tr><td><code>qwen3:14b</code></td><td>Alibaba</td><td>14.5B</td><td>Q4_K_M</td><td>Reasoning-heavy</td><td>9.5s</td></tr><tr><td><code>qwen3:4b</code></td><td>Alibaba</td><td>4.0B</td><td>Q4_K_M</td><td>Reasoning-heavy</td><td>6.5s</td></tr><tr><td><code>qwen3:8b</code></td><td>Alibaba</td><td>8.2B</td><td>Q4_K_M</td><td>Reasoning-heavy</td><td>7.8s</td></tr></tbody></table></div>
+
+      <h3>2.5 Dataset Inventory</h3>
+      <div class="docs-table-wrap"><table class="docs-table compact-table"><thead><tr><th>Dataset</th><th>Kind</th><th>Total</th><th>Passed</th><th>Failed</th><th>Pass Rate</th></tr></thead><tbody><tr><td>chat_instruction</td><td>chat</td><td>80</td><td>58</td><td>22</td><td>72.5%</td></tr><tr><td>chat_memory</td><td>chat</td><td>80</td><td>67</td><td>13</td><td>83.8%</td></tr><tr><td>chat_safety</td><td>chat</td><td>80</td><td>58</td><td>22</td><td>72.5%</td></tr><tr><td>critical_thinking</td><td>shortform</td><td>80</td><td>22</td><td>58</td><td>27.5%</td></tr><tr><td>cs_engineering</td><td>shortform</td><td>80</td><td>41</td><td>39</td><td>51.2%</td></tr><tr><td>history</td><td>shortform</td><td>80</td><td>52</td><td>28</td><td>65.0%</td></tr><tr><td>logic_deduction</td><td>shortform</td><td>80</td><td>57</td><td>23</td><td>71.2%</td></tr><tr><td>physics</td><td>shortform</td><td>80</td><td>46</td><td>34</td><td>57.5%</td></tr></tbody></table></div>
+    </section>
+
+    <section class="docs-section">
+      <h2>3. Results: Short-Form Evaluation</h2>
+      <h3>3.1 Per-Model Accuracy</h3>
+      <div class="docs-table-wrap"><table class="docs-table compact-table"><thead><tr><th>Rank</th><th>Model</th><th>Pass</th><th>Fail</th><th>Shortform</th><th>Chat UX</th><th>TTFT</th><th>TPS</th><th>Temp</th><th>Fitness</th></tr></thead><tbody><tr class='model-rank-1'><td>1</td><td><code>gemma3:4b</code></td><td>72.5%</td><td>27.5%</td><td>60.0%</td><td>93.3%</td><td>11.2s</td><td>89.3</td><td>45.3°C</td><td><strong>88.7</strong></td></tr><tr class='model-rank-2'><td>2</td><td><code>gemma3:12b</code></td><td>77.5%</td><td>22.5%</td><td>68.0%</td><td>93.3%</td><td>11.3s</td><td>38.7</td><td>45.1°C</td><td><strong>81.6</strong></td></tr><tr class='model-rank-3'><td>3</td><td><code>deepseek-r1:8b</code></td><td>65.0%</td><td>35.0%</td><td>54.0%</td><td>83.3%</td><td>18.4s</td><td>36.6</td><td>78.5°C</td><td><strong>65.0</strong></td></tr><tr class=''><td>4</td><td><code>qwen3:8b</code></td><td>61.2%</td><td>38.8%</td><td>58.0%</td><td>66.7%</td><td>16.2s</td><td>34.5</td><td>72.3°C</td><td><strong>59.8</strong></td></tr><tr class=''><td>5</td><td><code>qwen3:4b</code></td><td>56.2%</td><td>43.8%</td><td>54.0%</td><td>60.0%</td><td>15.4s</td><td>49.9</td><td>68.6°C</td><td><strong>59.2</strong></td></tr><tr class=''><td>6</td><td><code>gpt-oss:20b</code></td><td>70.0%</td><td>30.0%</td><td>64.0%</td><td>80.0%</td><td>25.4s</td><td>41.4</td><td>58.1°C</td><td><strong>57.8</strong></td></tr><tr class=''><td>7</td><td><code>deepseek-r1:14b</code></td><td>41.2%</td><td>58.8%</td><td>28.0%</td><td>63.3%</td><td>19.8s</td><td>20.0</td><td>81.0°C</td><td><strong>45.4</strong></td></tr><tr class=''><td>8</td><td><code>qwen3:14b</code></td><td>57.5%</td><td>42.5%</td><td>50.0%</td><td>70.0%</td><td>26.3s</td><td>17.7</td><td>82.6°C</td><td><strong>45.0</strong></td></tr></tbody></table></div>
+      <h3>3.2 Speed Metrics</h3>
+      <div class="docs-chart"><h4>Average TTFT (lower is better)</h4><div class='docs-chart-row'><span class='docs-chart-label'>gemma3:4b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:43%; background: linear-gradient(90deg, #22c55e, #22c55e);'></div></div><span class='docs-chart-value'>11.2s</span></div><div class='docs-chart-row'><span class='docs-chart-label'>gemma3:12b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:43%; background: linear-gradient(90deg, #22c55e, #22c55e);'></div></div><span class='docs-chart-value'>11.3s</span></div><div class='docs-chart-row'><span class='docs-chart-label'>qwen3:4b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:59%; background: linear-gradient(90deg, #3b82f6, #3b82f6);'></div></div><span class='docs-chart-value'>15.4s</span></div><div class='docs-chart-row'><span class='docs-chart-label'>qwen3:8b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:62%; background: linear-gradient(90deg, #3b82f6, #3b82f6);'></div></div><span class='docs-chart-value'>16.2s</span></div><div class='docs-chart-row'><span class='docs-chart-label'>deepseek-r1:8b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:70%; background: linear-gradient(90deg, #f59e0b, #f59e0b);'></div></div><span class='docs-chart-value'>18.4s</span></div><div class='docs-chart-row'><span class='docs-chart-label'>deepseek-r1:14b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:75%; background: linear-gradient(90deg, #f59e0b, #f59e0b);'></div></div><span class='docs-chart-value'>19.8s</span></div><div class='docs-chart-row'><span class='docs-chart-label'>gpt-oss:20b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:97%; background: linear-gradient(90deg, #ef4444, #ef4444);'></div></div><span class='docs-chart-value'>25.4s</span></div><div class='docs-chart-row'><span class='docs-chart-label'>qwen3:14b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:100%; background: linear-gradient(90deg, #ef4444, #ef4444);'></div></div><span class='docs-chart-value'>26.3s</span></div></div>
+    </section>
+
+    <section class="docs-section">
+      <h2>4. Seven-Axis Radar Visualization</h2>
+      <p>The radar chart uses the same axis family as <code>benchmark.html</code>: TTFT, Throughput, Math, Reasoning, Instruction, Chat UX, and Thermal. All values are normalized to 0-100.</p>
+      <div class="radar-wrapper"><div id="radarChart7Axis" class="radar-echart"></div></div>
+    </section>
+
+    <section class="docs-section">
+      <h2>5. Failure Analysis</h2>
+      <h3>5.1 KO Concentration</h3>
+      <div class="failure-item"><h5>Dominant KO datasets</h5><p>Failure mass is concentrated in <code>critical_thinking</code>, <code>cs_engineering</code>, and <code>physics</code>.</p></div>
+      <h3>5.2 Failure Summary by Dataset</h3>
+      <div class="docs-table-wrap"><table class="docs-table compact-table"><thead><tr><th>Dataset</th><th>KO Count</th><th>KO Rate</th><th>Total</th></tr></thead><tbody><tr><td>critical_thinking</td><td>58</td><td>72.5%</td><td>80</td></tr><tr><td>cs_engineering</td><td>39</td><td>48.8%</td><td>80</td></tr><tr><td>physics</td><td>34</td><td>42.5%</td><td>80</td></tr><tr><td>history</td><td>28</td><td>35.0%</td><td>80</td></tr><tr><td>logic_deduction</td><td>23</td><td>28.8%</td><td>80</td></tr><tr><td>chat_instruction</td><td>22</td><td>27.5%</td><td>80</td></tr><tr><td>chat_safety</td><td>22</td><td>27.5%</td><td>80</td></tr><tr><td>chat_memory</td><td>13</td><td>16.2%</td><td>80</td></tr></tbody></table></div>
+    </section>
+
+    <section class="docs-section">
+      <h2>6. Chat UX Track Results</h2>
+      <h3>6.1 Turn Compliance Rate (Task-Level)</h3>
+      <div class="docs-table-wrap"><table class="docs-table compact-table"><thead><tr><th>Model</th><th>Tasks</th><th>Chat %</th><th>TTFT</th><th>tok/s</th></tr></thead><tbody><tr><td><code>gemma3:12b</code></td><td>30</td><td>93.3%</td><td>11.3s</td><td>38.7</td></tr><tr><td><code>gemma3:4b</code></td><td>30</td><td>93.3%</td><td>11.2s</td><td>89.3</td></tr><tr><td><code>deepseek-r1:8b</code></td><td>30</td><td>83.3%</td><td>18.4s</td><td>36.6</td></tr><tr><td><code>gpt-oss:20b</code></td><td>30</td><td>80.0%</td><td>25.4s</td><td>41.4</td></tr><tr><td><code>qwen3:14b</code></td><td>30</td><td>70.0%</td><td>26.3s</td><td>17.7</td></tr><tr><td><code>qwen3:8b</code></td><td>30</td><td>66.7%</td><td>16.2s</td><td>34.5</td></tr><tr><td><code>deepseek-r1:14b</code></td><td>30</td><td>63.3%</td><td>19.8s</td><td>20.0</td></tr><tr><td><code>qwen3:4b</code></td><td>30</td><td>60.0%</td><td>15.4s</td><td>49.9</td></tr></tbody></table></div>
+      <h3>6.2 Chat TTFT Distribution</h3>
+      <p>Observed model means span 11.2s to 26.3s in TTFT.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>7. Thermal Analysis</h2>
+      <div class="docs-chart"><h4>Average GPU Temperature (lower is better)</h4><div class='docs-chart-row'><span class='docs-chart-label'>gemma3:12b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:55%; background: linear-gradient(90deg, #22c55e, #22c55e);'></div></div><span class='docs-chart-value'>45.1°C</span></div><div class='docs-chart-row'><span class='docs-chart-label'>gemma3:4b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:55%; background: linear-gradient(90deg, #22c55e, #22c55e);'></div></div><span class='docs-chart-value'>45.3°C</span></div><div class='docs-chart-row'><span class='docs-chart-label'>gpt-oss:20b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:70%; background: linear-gradient(90deg, #3b82f6, #3b82f6);'></div></div><span class='docs-chart-value'>58.1°C</span></div><div class='docs-chart-row'><span class='docs-chart-label'>qwen3:4b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:83%; background: linear-gradient(90deg, #f59e0b, #f59e0b);'></div></div><span class='docs-chart-value'>68.6°C</span></div><div class='docs-chart-row'><span class='docs-chart-label'>qwen3:8b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:88%; background: linear-gradient(90deg, #f59e0b, #f59e0b);'></div></div><span class='docs-chart-value'>72.3°C</span></div><div class='docs-chart-row'><span class='docs-chart-label'>deepseek-r1:8b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:95%; background: linear-gradient(90deg, #ef4444, #ef4444);'></div></div><span class='docs-chart-value'>78.5°C</span></div><div class='docs-chart-row'><span class='docs-chart-label'>deepseek-r1:14b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:98%; background: linear-gradient(90deg, #ef4444, #ef4444);'></div></div><span class='docs-chart-value'>81.0°C</span></div><div class='docs-chart-row'><span class='docs-chart-label'>qwen3:14b</span><div class='docs-chart-bar'><div class='docs-chart-fill' style='width:100%; background: linear-gradient(90deg, #ef4444, #ef4444);'></div></div><span class='docs-chart-value'>82.6°C</span></div></div>
+      <p>Thermal spread is 45.1°C to 82.6°C across evaluated models.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>8. Composite Rankings</h2>
+      <h3>8.1 Efficiency Frontier</h3>
+      <p>The efficiency frontier is defined by models that preserve high chat quality with lower latency and manageable thermal load under the fitness objective.</p>
+      <h3>8.2 Recommendations by Use Case</h3>
+      <div class="docs-table-wrap"><table class="docs-table compact-table"><thead><tr><th>Use Case</th><th>Recommended Model</th><th>Rationale</th></tr></thead><tbody>
+      <tr><td>Balanced Production</td><td><code>gemma3:4b</code></td><td>Highest composite fitness (88.7).</td></tr>
+      <tr><td>Lowest Latency</td><td><code>gemma3:4b</code></td><td>Lowest mean TTFT (11.2s).</td></tr>
+      <tr><td>Highest Throughput</td><td><code>gemma3:4b</code></td><td>Highest mean output rate (89.3 tok/s).</td></tr>
+      <tr><td>Highest Reliability</td><td><code>gemma3:12b</code></td><td>Best global pass rate (77.5%).</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section class="docs-section">
+      <h2>9. Chain-of-Thought (CoT) Analysis</h2>
+      <p>
+        This benchmark is explicitly oriented to the application use case: <strong>fast, chat-friendly interaction</strong>.
+        In that context, CoT behavior is not a side detail; it directly affects first-token latency and perceived responsiveness.
+      </p>
+
+      <h3>9.1 Behavioral Mechanism</h3>
+      <p>
+        As characterized in <code>benchmark/test_thinking.py</code>, some models emit hidden reasoning before visible output.
+        This produces an architecture-level latency overhead: the user sees the first token only after internal reasoning finishes.
+      </p>
+      <p>
+        Concretely, <code>benchmark/test_thinking.py</code> sends a deterministic two-message chat request to each model
+        (<code>system: final-answer-only</code>, <code>user: "What is 2+2?"</code>) and inspects the Ollama response fields.
+        It records:
+        <code>eval_count</code> (generated tokens), end-to-end elapsed time, derived tokens/sec, visible <code>message.content</code> length,
+        hidden <code>message.thinking</code> length, and the thinking/content character split.
+        If <code>message.thinking</code> is non-empty, the model is classified as using a reasoning-first response mode in this probe.
+      </p>
+      <p>
+        This is a behavioral probe, not a quality benchmark: it is intentionally small and controlled to isolate response mode effects.
+        It does not grade task correctness breadth, nor does it estimate full benchmark variance across prompt families.
+      </p>
+
+      <h3>9.2 Response-Mode Interpretation</h3>
+      <div class="result-highlight">
+        <h4 style="margin-top:0;">Model Families in This Run</h4>
+        <div class="failure-item" style="margin-top:12px;">
+          <h5>Direct-response profile</h5>
+          <p><strong>gemma3:4b, gemma3:12b</strong> show the lowest TTFT in this run and the highest chat UX outcomes, consistent with chat-first serving behavior.</p>
+        </div>
+        <div class="failure-item" style="margin-bottom:0;">
+          <h5>Reasoning-heavy profile</h5>
+          <p><strong>qwen3:*</strong>, <strong>deepseek-r1:*</strong>, and <strong>gpt-oss:20b</strong> can preserve useful reasoning quality but incur larger TTFT overhead in interactive chat settings.</p>
+        </div>
+      </div>
+
+      <h3>9.3 Implications for Metrics in a Fast-Chat Benchmark</h3>
+      <div class="docs-table-wrap">
+        <table class="docs-table compact-table">
+          <thead>
+            <tr><th>Metric</th><th>Interpretation Under CoT Behavior</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>TTFT</strong></td>
+              <td>Most sensitive metric for chat UX; hidden reasoning inflates first-token delay.</td>
+            </tr>
+            <tr>
+              <td><strong>Tokens/sec</strong></td>
+              <td>Still valid for generation throughput, but does not cancel first-token waiting cost.</td>
+            </tr>
+            <tr>
+              <td><strong>Wall-clock response feel</strong></td>
+              <td>Dominated by TTFT in chat flows; users perceive delay before any visible answer.</td>
+            </tr>
+            <tr>
+              <td><strong>Accuracy</strong></td>
+              <td>Reasoning overhead may help on harder tasks, but can underperform in chat-first utility when latency is prioritized.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>9.4 Benchmark Positioning</h3>
+      <p>
+        This report should be read as a <strong>use-case benchmark</strong>, not a universal intelligence ranking.
+        The scoring favors models that are both correct and immediately responsive for conversational product UX.
+        A model can be strong in deeper reasoning workloads and still rank lower here if its response mode is slower.
+      </p>
+
+      <h3>9.5 Practical Reading of Results</h3>
+      <p>
+        For this app, lower TTFT and high chat compliance are primary deployment criteria.
+        The CoT framing explains why some reasoning-heavy models underperform in this benchmark despite competitive quality on non-chat workloads.
+      </p>
+    </section>
+
+    <section class="docs-section">
+      <h2>10. Magistral Case Study (Excluded from Final Ranking)</h2>
+      <p>
+        <code>magistral:24b</code> was included in our local benchmark and ad-hoc test programs because it is present in our app model catalog,
+        performs well in many interactive sessions, and is a strategically relevant European model family to evaluate in real operating conditions.
+      </p>
+      <p>
+        In this report, Magistral is documented as a dedicated case study because its behavior diverged across evaluation regimes.
+        The final ranking exclusion is therefore presented after evidence review, and is treated as a hardware-profile reliability decision,
+        not a general rejection of model potential.
+      </p>
+
+      <div class="case-note">
+        <h4 style="margin-top:0;">Why this is a surprise</h4>
+        <p style="margin-bottom:0;">
+          Interactive app usage and benchmark stress workload are different operating regimes. A model can feel strong in user-driven chat sessions
+          but still collapse under sustained, back-to-back hard benchmark prompts with strict timeout and fairness controls.
+        </p>
+      </div>
+
+      <h3>10.1 Quantitative Evidence (DB-backed)</h3>
+      <p>
+        Aggregated benchmark observations show <code>magistral:24b</code> has non-stationary behavior on this hardware profile:
+        it can produce acceptable outcomes in some benchmark executions, and collapse in others.
+      </p>
+      <div class="docs-table-wrap">
+        <table class="docs-table compact-table">
+          <thead>
+            <tr><th>Observed regime</th><th>Interpretation</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Stable execution episodes</td><td>Model completes substantial workload with usable quality.</td></tr>
+            <tr><td>Collapse episodes</td><td>Systematic timeout/hang patterns dominate and break comparability.</td></tr>
+            <tr><td>Intermediate episodes</td><td>Partial completion with elevated error density and degraded throughput.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>10.2 Failure Modes Detected</h3>
+      <ul>
+        <li>On a subset of hard logic/math prompts, generation can enter long non-productive loops.</li>
+        <li>These events correlate with timeout/connection failures and unstable endpoint behavior.</li>
+        <li>Loop episodes can degrade Ollama stability and require manual unload/restart for recovery.</li>
+        <li>Performance is substantially better on lower-complexity prompts, indicating a difficulty-dependent failure profile.</li>
+      </ul>
+      <p>
+        Minimal isolation tests reproduced the same pattern, so this is not attributed to benchmark-framework orchestration.
+        Operationally, these cases exceed user-friendly latency bounds.
+      </p>
+
+      <h3>10.3 Error Signatures</h3>
+      <ul>
+        <li><code>HTTPConnectionPool(...): Read timed out. (read timeout=60)</code></li>
+        <li><code>RemoteDisconnected('Remote end closed connection without response')</code></li>
+        <li><code>Max retries exceeded ... /api/stream</code> after instability propagation</li>
+      </ul>
+      <h3>10.4 Thermal Risk Observation</h3>
+      <p>
+        During the latest stress reproduction, direct sensor checks reported:
+        <code>GPU temperature: 97.6°C</code>, <code>GPU utilization: 100%</code>,
+        and panel telemetry showing hottest GPU around <code>97.7°C</code> with average GPU around <code>92.2°C</code>.
+        This is outside a comfortable sustained operating envelope for user-facing reliability.
+      </p>
+
+      <h3>10.5 Interpretation</h3>
+      <p>
+        The evidence indicates a <strong>difficulty-dependent reliability instability</strong> on this hardware profile.
+        The model can provide acceptable outputs on lower-complexity prompts, but on a subset of hard logic/math prompts
+        it shows reproducible failure modes: prolonged non-productive generation, timeout/connection failures, and thermal escalation.
+        Isolation with minimal direct scripts supports that this is not a benchmark-framework orchestration artifact.
+        The resulting decision criterion is operational: user-facing latency reliability and thermal safety.
+      </p>
+
+      <h3>10.6 Phased Ad-Hoc Treatment</h3>
+      <p>
+        We executed a dedicated phased ad-hoc treatment on app <code>/api/stream</code>
+        with final-answer-only prompting and no retries, then rejudged with <code>gpt-oss:20b</code>.
+      </p>
+      <div class="docs-table-wrap">
+        <table class="docs-table compact-table">
+          <thead>
+            <tr><th>Phase</th><th>Result</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Preflight</td><td>Endpoints/models/datasets validated (with hardened checks).</td></tr>
+            <tr><td>Smoke gate (8 tasks)</td><td>Passed: <code>ok_runs=8</code>, <code>non_empty_runs=8</code>, <code>timeout_runs=0</code>.</td></tr>
+            <tr><td>Full canonical run (80 tasks)</td><td>Transport stable: <code>ok_rate=1.0</code>, <code>non_empty_rate=1.0</code>, <code>timeout_rate=0.0</code>.</td></tr>
+            <tr><td>Rejudge (<code>gpt-oss:20b</code>)</td><td>Official semantic pass: <code>44/80 = 55%</code>; manual-adjusted signal around <code>~60%</code> after parse-failure review.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>10.7 Minimal CLI Reproduction (Logic + Math)</h3>
+      <p>
+        Final direct CLI evidence is consolidated in
+        <code>benchmark/magistral/results/2026-02-21_CLI_logic_math_results.log</code>.
+        Only these tests are used for this subsection.
+      </p>
+      <div class="docs-table-wrap">
+        <table class="docs-table compact-table">
+          <thead>
+            <tr><th>Task</th><th>Prompt regime</th><th>Observed outcome</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>logic_037</td><td>Raw question</td><td>Very long reasoning loop (<code>real 801.16s</code>), drifting conclusions and unstable termination.</td></tr>
+            <tr><td>logic_037</td><td>Short-answer prefixed (2 runs)</td><td>Faster (<code>real 9.17s</code>, <code>4.98s</code>) but still non-compliant formatting (explanations despite final-only request).</td></tr>
+            <tr><td>Absolute-value equation</td><td>Raw question</td><td>Correct solution set after excessive chain-of-thought expansion (<code>real 224.67s</code>).</td></tr>
+            <tr><td>Absolute-value equation</td><td>Short-answer prefixed (2 runs)</td><td>Fast but wrong outputs (<code>real 8.53s</code>, <code>2.13s</code>), with solution drift across repeats.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        CLI conclusion from these tests: prompt constraints can reduce latency, but do not stabilize correctness or format compliance.
+        Raw mode can recover correctness on some math items, yet with impractical latency and uncontrolled reasoning sprawl.
+      </p>
+
+      <h3>10.8 Evidence Package</h3>
+      <p>
+        Reproducible references for this case study are stored in:
+        <code>benchmark/magistral/scripts/</code> and
+        <code>benchmark/magistral/results/</code>
+        (including <code>2026-02-21_CLI_logic_math_results.log</code>).
+      </p>
+
+      <h3>10.9 Updated Learning</h3>
+      <ul>
+        <li>Prompt-regime switching exposes a hard tradeoff: short answers improve speed, raw answers sometimes preserve math correctness, but neither regime is stationary.</li>
+        <li>Overthinking is a termination-control failure mode: repeated self-restarts and answer rewrites inflate latency without quality gain.</li>
+        <li>For this environment, evaluation must track both correctness and operational behavior (latency variance, format compliance, and server stress), not score alone.</li>
+        <li>Phased ad-hoc treatment remains useful for containment, but does not eliminate intrinsic variance under unrestricted CLI prompting.</li>
+      </ul>
+
+      <h3>10.10 Decision</h3>
+      <ul>
+        <li>Exclude <code>magistral:24b</code> from final ranking on this hardware profile to preserve fairness, comparability, and operational safety.</li>
+        <li>Keep <code>magistral:24b</code> available in app model lists as optional/experimental, with explicit caveat on prompt sensitivity and variance.</li>
+        <li>Keep it as a stress-case model for robustness and termination-control hardening.</li>
+      </ul>
+
+      <h3>10.11 Final Conclusion (Technical + Humanist Approach)</h3>
+      <p>
+        <strong>Technical:</strong> in this environment, <code>magistral:24b</code> is non-stationary across prompt regimes.
+        Short constraints can accelerate outputs but may degrade correctness; raw mode can preserve some reasoning quality but at prohibitive latency and unstable stopping behavior.
+      </p>
+      <p>
+        <strong>Humanist approach:</strong> the model often reads like a deep, open-minded thinker with strong intellectual tone,
+        but still feels under-refined for predictable production behavior even on easy-to-medium logic/math tasks.
+      </p>
+      <p>
+        Final position: keep Magistral as a valuable experimental model and stress benchmark subject, but outside the final published ranking for this hardware profile.
+      </p>
+    </section>
+
+<section class="docs-section">
+      <h2>11. Limitations and Future Work</h2>
+      <h3>11.1 Limitations</h3>
+      <ul>
+        <li>Results remain hardware-profile specific; conclusions are valid for this local stack, not universal model ranking claims.</li>
+        <li>Prompt-regime sensitivity is material: the same model/task can shift between fast-but-wrong and slow-but-correct trajectories.</li>
+        <li>Semantic judging is still an estimation layer: we keep multiple judges, but disagreement and parser-format failures can still affect headline interpretation.</li>
+        <li>Aggregate telemetry can hide tail risk; extreme loop events (very long reasoning runs) are better captured by explicit CLI stress probes than by averages alone.</li>
+        <li>Current quality summaries do not yet include a formal consensus score across judges (agreement rate / disagreement taxonomy published as a single KPI).</li>
+      </ul>
+      <h3>11.2 Future Work</h3>
+      <ul>
+        <li>Run repeated full benchmarks per model/profile and publish confidence intervals for pass rate, TTFT, and throughput.</li>
+        <li>Add a dedicated termination-control track (repetition ratio, self-restart count, final-answer mutation after first conclusion).</li>
+        <li>Publish multi-judge consensus KPIs (agreement matrix for <code>gpt-oss:20b</code>, <code>Codex</code>, <code>Claude</code>) alongside model scores.</li>
+        <li>Keep a dual-profile evaluation policy: constrained short-answer profile and natural/raw profile, both required for promotion decisions.</li>
+        <li>Promote the CLI logic+math micro-suite (<code>2026-02-21_CLI_logic_math_results.log</code>) as a permanent gate for variance detection.</li>
+        <li>Add latency-percentile and long-tail reporting (p95/p99 + max) to complement means and improve operational risk visibility.</li>
+      </ul>
+    </section>
+
+    
+
+    <section class="docs-section">
+      <h2>12. Reproducibility</h2>
+      <h3>12.1 Data Source</h3>
+      <p>
+        Metrics and conclusions combine:
+        DB-backed benchmark evidence from <code>db/benchmark.db</code> (run <code>9cc182d7-74c0-4ac2-a0eb-3ed86afd142b</code>)
+        and phased ad-hoc artifacts in <code>benchmark/magistral/results/</code>
+        (notably <code>2026-02-20_magistral_adhoc_smoke_one_each.json</code>,
+        <code>2026-02-20_magistral_adhoc_canonical_80_raw.json</code>,
+        <code>2026-02-20_magistral_adhoc_canonical_80_rejudge_gptoss.json</code>).
+      </p>
+      <h3>12.2 Outcome Definitions</h3>
+      <p>
+        <strong>Chat tracks</strong>: pass/fail from recorded task status.
+        <strong>Shortform tracks</strong>: primary run outcome is kept from recorded task status, and semantic opinions from
+        <code>gpt-oss:20b</code>, <code>Codex</code>, and <code>Claude</code> are stored in DB as parallel judge layers for this full run.
+      </p>
+      <p>
+        <strong>Several-judges philosophy</strong>: no single judge is treated as absolute truth. We keep all judge evaluations side by side to measure consensus,
+        detect disagreement pockets, and separate model behavior from judge-specific bias. Ranking conclusions are based on convergent signals across judges plus
+        operational metrics (latency, stability, and transport reliability), not on one semantic scorer alone.
+      </p>
+      <h3>12.3 Radar Axes</h3>
+      <p>TTFT, Throughput, Math, Reasoning, Instruction, Chat UX, Thermal (normalized 0-100).</p>
+    </section>
+
+    <footer class="docs-footer">
+      <a href="/docs/handwrite.html" class="docs-footer-prev">← About</a>
+      <a href="/docs/benchmark_claude.html" class="docs-footer-next">Benchmark Claude →</a>
+    </footer>
+  </main>
+
+  <script src="/js/echarts.min.js"></script>
+  <script>
+    (function initSortableTables() {
+      const tables = document.querySelectorAll('table.docs-table');
+      if (!tables.length) return;
+
+      function parseCellValue(rawValue) {
+        const value = (rawValue || '').replace(/\s+/g, ' ').trim();
+        if (!value) return { type: 'null', value: null };
+        const lower = value.toLowerCase();
+        if (lower === 'n/a' || lower === 'na' || lower === '--') return { type: 'null', value: null };
+
+        const numericCandidate = value.replace(/,/g, '');
+        const numberMatch = numericCandidate.match(/-?\d+(\.\d+)?/);
+        if (numberMatch) {
+          const parsed = Number.parseFloat(numberMatch[0]);
+          if (Number.isFinite(parsed)) return { type: 'number', value: parsed };
+        }
+        return { type: 'string', value: lower };
+      }
+
+      function compareValues(a, b, dir) {
+        if (a.type === 'null' && b.type === 'null') return 0;
+        if (a.type === 'null') return 1;
+        if (b.type === 'null') return -1;
+
+        if (a.type === 'number' && b.type === 'number') {
+          return dir === 'asc' ? a.value - b.value : b.value - a.value;
+        }
+
+        const left = String(a.value);
+        const right = String(b.value);
+        const cmp = left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+        return dir === 'asc' ? cmp : -cmp;
+      }
+
+      tables.forEach((table) => {
+        const headerCells = table.querySelectorAll('thead th');
+        const tbody = table.querySelector('tbody');
+        if (!headerCells.length || !tbody) return;
+
+        const rows = Array.from(tbody.rows);
+        rows.forEach((row, idx) => {
+          row.dataset.originalOrder = String(idx);
+        });
+
+        // Align numeric-like columns centered and text columns left.
+        headerCells.forEach((th, colIndex) => {
+          const headerText = (th.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+          if (headerText === 'model') {
+            th.classList.add('col-text');
+            rows.forEach((row) => {
+              const cell = row.cells[colIndex];
+              if (cell) cell.classList.add('col-text');
+            });
+            return;
+          }
+
+          let numericCount = 0;
+          let nonEmptyCount = 0;
+          rows.forEach((row) => {
+            const cell = row.cells[colIndex];
+            if (!cell) return;
+            const parsed = parseCellValue(cell.textContent);
+            if (parsed.type === 'null') return;
+            nonEmptyCount += 1;
+            if (parsed.type === 'number') numericCount += 1;
+          });
+          const isNumeric = nonEmptyCount > 0 && numericCount / nonEmptyCount >= 0.7;
+          const className = isNumeric ? 'col-numeric' : 'col-text';
+          th.classList.add(className);
+          rows.forEach((row) => {
+            const cell = row.cells[colIndex];
+            if (cell) cell.classList.add(className);
+          });
+        });
+
+        const updateHeaderState = (activeCol, dir) => {
+          headerCells.forEach((th, idx) => {
+            const btn = th.querySelector('.table-sort-btn');
+            if (!btn) return;
+            if (idx === activeCol) {
+              th.classList.add('is-sorted');
+              btn.textContent = dir === 'asc' ? '↑' : '↓';
+              btn.setAttribute('aria-label', `Sorted ${dir}. Click to sort ${dir === 'asc' ? 'descending' : 'ascending'}.`);
+            } else {
+              th.classList.remove('is-sorted');
+              btn.textContent = '↕';
+              btn.setAttribute('aria-label', 'Sort column');
+            }
+          });
+        };
+
+        headerCells.forEach((th, colIndex) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'table-sort-btn';
+          btn.textContent = '↕';
+          btn.setAttribute('aria-label', 'Sort column');
+
+          btn.addEventListener('click', () => {
+            const currentCol = Number.parseInt(table.dataset.sortCol || '-1', 10);
+            const currentDir = table.dataset.sortDir || 'none';
+            const nextDir = currentCol === colIndex && currentDir === 'asc' ? 'desc' : 'asc';
+
+            const sortableRows = Array.from(tbody.rows);
+            sortableRows.sort((rowA, rowB) => {
+              const cellA = rowA.cells[colIndex];
+              const cellB = rowB.cells[colIndex];
+              const valueA = parseCellValue(cellA ? cellA.textContent : '');
+              const valueB = parseCellValue(cellB ? cellB.textContent : '');
+              const cmp = compareValues(valueA, valueB, nextDir);
+              if (cmp !== 0) return cmp;
+              return Number.parseInt(rowA.dataset.originalOrder || '0', 10) - Number.parseInt(rowB.dataset.originalOrder || '0', 10);
+            });
+            sortableRows.forEach((row) => tbody.appendChild(row));
+
+            table.dataset.sortCol = String(colIndex);
+            table.dataset.sortDir = nextDir;
+            updateHeaderState(colIndex, nextDir);
+          });
+
+          th.appendChild(btn);
+        });
+      });
+    })();
+
+    (function(){
+      const el = document.getElementById('radarChart7Axis');
+      if (!el || typeof echarts === 'undefined') return;
+      const chart = echarts.init(el);
+      const data = [{"name": "gemma3:4b", "value": [100.0, 100.0, 55.0, 60.0, 80.0, 93.3, 99.4], "itemStyle": {"color": "#22c55e"}, "lineStyle": {"color": "#22c55e", "width": 2}, "areaStyle": {"color": "rgba(34,197,94,0.10)"}}, {"name": "gemma3:12b", "value": [98.9, 29.3, 75.0, 60.0, 80.0, 93.3, 100.0], "itemStyle": {"color": "#ef4444"}, "lineStyle": {"color": "#ef4444", "width": 2}, "areaStyle": {"color": "rgba(239,68,68,0.10)"}}, {"name": "deepseek-r1:8b", "value": [51.8, 26.4, 55.0, 45.0, 70.0, 83.3, 10.9], "itemStyle": {"color": "#3b82f6"}, "lineStyle": {"color": "#3b82f6", "width": 2}, "areaStyle": {"color": "rgba(59,130,246,0.10)"}}, {"name": "gpt-oss:20b", "value": [5.5, 33.2, 65.0, 60.0, 70.0, 80.0, 65.2], "itemStyle": {"color": "#f59e0b"}, "lineStyle": {"color": "#f59e0b", "width": 2}, "areaStyle": {"color": "rgba(245,158,11,0.10)"}}, {"name": "qwen3:4b", "value": [72.1, 45.0, 55.0, 50.0, 70.0, 60.0, 37.4], "itemStyle": {"color": "#14b8a6"}, "lineStyle": {"color": "#14b8a6", "width": 2}, "areaStyle": {"color": "rgba(20,184,166,0.10)"}}, {"name": "qwen3:8b", "value": [66.8, 23.4, 60.0, 50.0, 70.0, 66.7, 27.3], "itemStyle": {"color": "#8b5cf6"}, "lineStyle": {"color": "#8b5cf6", "width": 2}, "areaStyle": {"color": "rgba(139,92,246,0.10)"}}, {"name": "deepseek-r1:14b", "value": [43.0, 3.3, 15.0, 30.0, 80.0, 63.3, 4.3], "itemStyle": {"color": "#6366f1"}, "lineStyle": {"color": "#6366f1", "width": 2}, "areaStyle": {"color": "rgba(99,102,241,0.10)"}}, {"name": "qwen3:14b", "value": [0.0, 0.0, 55.0, 40.0, 60.0, 70.0, 0.0], "itemStyle": {"color": "#a855f7"}, "lineStyle": {"color": "#a855f7", "width": 2}, "areaStyle": {"color": "rgba(168,85,247,0.10)"}}];
+      const option = {
+        tooltip: {
+          trigger: 'item',
+          formatter: function(params) {
+            const axes = ['TTFT','Throughput','Math','Reasoning','Instruction','Chat UX','Thermal'];
+            let result = '<strong>' + params.name + '</strong><br/>';
+            params.value.forEach((val, idx) => { result += axes[idx] + ': ' + val + '/100<br/>'; });
+            return result;
+          }
+        },
+        legend: { data: data.map(d => d.name), bottom: 0, textStyle: { fontSize: 11 } },
+        radar: {
+          indicator: [
+            { name: 'TTFT', max: 100 },
+            { name: 'Throughput', max: 100 },
+            { name: 'Math', max: 100 },
+            { name: 'Reasoning', max: 100 },
+            { name: 'Instruction', max: 100 },
+            { name: 'Chat UX', max: 100 },
+            { name: 'Thermal', max: 100 }
+          ],
+          radius: '64%'
+        },
+        series: [{ type: 'radar', emphasis: { lineStyle: { width: 4 } }, data: data }]
+      };
+      chart.setOption(option);
+      window.addEventListener('resize', () => chart.resize());
+    })();
+  </script>
+</body>
+</html>

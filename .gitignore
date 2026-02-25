@@ -1,0 +1,54 @@
+# macOS
+.DS_Store
+.chat_env
+.chat_userconf
+.chat_portconf
+nohup.out
+
+# Python env
+chat_env/
+venv/
+.env
+
+# Python artifacts
+__pycache__/
+*.pyc
+
+# Coqui TTS / Whisper caches
+tts_cache/
+
+# Audio files
+*.wav
+*.mp3
+
+# Logs
+*.log
+*.err
+server.err.log
+server.out.log
+
+# Build artifacts
+dist/
+build/
+
+# Frontend caches
+node_modules/
+npm-debug.log
+
+# Local data and backups
+backups/
+chats/
+db/*
+!db/benchmark.db
+!db/analytics.db
+!db/GeoLite2-Country.mmdb
+!db/LICENSE.txt
+!db/COPYRIGHT.txt
+.flask.pid
+.ollama.pid
+.eco_mode.state
+*.pid
+*.db
+!db/benchmark.db
+!db/analytics.db
+*.tar.gz

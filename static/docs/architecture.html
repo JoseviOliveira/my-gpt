@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <title>Architecture</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← Back to app</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Index</a>
+      <a href="/docs/user.html">User Guide</a>
+      <a href="/docs/architecture.html" class="active">Architecture</a>
+      <a href="/docs/engineering.html">Engineering</a>
+      <a href="/docs/installation.html">Installation</a>
+      <a href="/docs/audience.html">Audience</a>
+      <a href="/docs/handwrite.html">About</a>
+      <a href="/docs/benchmark.html">Benchmarks</a>
+      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
+
+    </div>
+  </nav>
+
+  <main class="docs-content">
+    <header class="docs-header">
+      <h1>Architecture</h1>
+      <p>Technical reference for the local-first AI chat platform.</p>
+    </header>
+
+    <section class="docs-section">
+      <h2>Overview</h2>
+      <p>Local Chat is a self-hosted AI assistant that runs entirely on your machine. The browser loads a single-page app from Flask, which proxies requests to Ollama for LLM inference and optional neural speech services for voice interaction.</p>
+      <ul>
+        <li><strong>Flask:</strong> Python web server with modular blueprints.</li>
+        <li><strong>Ollama:</strong> Local LLM inference at localhost:11434.</li>
+        <li><strong>Whisper:</strong> Neural speech-to-text (optional).</li>
+        <li><strong>Coqui TTS:</strong> Neural text-to-speech (optional).</li>
+        <li><strong>SQLite:</strong> Analytics database.</li>
+        <li><strong>Caddy:</strong> TLS reverse proxy for HTTPS.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>High-Level Architecture</h2>
+      <p>The system follows a three-tier architecture: presentation (browser SPA), application (Flask API), and data/inference (Ollama + SQLite + neural speech models).</p>
+      <div style="overflow-x: auto; margin: 24px 0;">
+        <svg viewBox="0 0 620 480" width="100%" style="max-width: 620px; display: block; margin: 0 auto;" role="img" aria-label="System architecture diagram">
+          <defs>
+            <linearGradient id="g1" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.05"/>
+            </linearGradient>
+            <linearGradient id="g2" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#10b981" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="#10b981" stop-opacity="0.05"/>
+            </linearGradient>
+            <linearGradient id="g3" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.05"/>
+            </linearGradient>
+            <linearGradient id="g4" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.05"/>
+            </linearGradient>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,8 L8,4 z" fill="#64748b"/>
+            </marker>
+            <marker id="arrowDash" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L6,3 z" fill="#94a3b8"/>
+            </marker>
+          </defs>
+          <style>
+            .layer-label { font: 600 10px system-ui, sans-serif; fill: #64748b; text-transform: uppercase; letter-spacing: 0.1em; }
+            .box-title { font: 600 12px system-ui, sans-serif; fill: #1e293b; }
+            .box-item { font: 400 10px system-ui, sans-serif; fill: #475569; }
+            .conn { stroke: #64748b; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+            .conn-dash { stroke: #94a3b8; stroke-width: 1.5; fill: none; stroke-dasharray: 4,3; marker-end: url(#arrowDash); }
+            @media (prefers-color-scheme: dark) {
+              .layer-label { fill: #94a3b8; }
+              .box-title { fill: #f1f5f9; }
+              .box-item { fill: #cbd5e1; }
+            }
+          </style>
+
+          <!-- PRESENTATION LAYER -->
+          <text class="layer-label" x="20" y="18">Presentation</text>
+          
+          <!-- Browser SPA box -->
+          <rect x="20" y="28" width="260" height="100" rx="6" fill="url(#g1)" stroke="#3b82f6" stroke-width="1.5"/>
+          <text class="box-title" x="34" y="48">Browser SPA</text>
+          <text class="box-item" x="34" y="64">Streaming chat UI</text>
+          <text class="box-item" x="34" y="78">Session management</text>
+          <text class="box-item" x="34" y="92">Settings, themes</text>
+          <text class="box-item" x="34" y="106">Web Speech, MathJax</text>
+          <text class="box-item" x="34" y="120">Markdown rendering</text>
+
+          <!-- Caddy Proxy box -->
+          <rect x="420" y="28" width="180" height="100" rx="6" fill="url(#g1)" stroke="#3b82f6" stroke-width="1.5"/>
+          <text class="box-title" x="434" y="48">Caddy Proxy</text>
+          <text class="box-item" x="434" y="64">TLS termination</text>
+          <text class="box-item" x="434" y="78">HTTPS certificates</text>
+          <text class="box-item" x="434" y="92">Reverse proxy</text>
+          <text class="box-item" x="434" y="106">→ Flask backend</text>
+
+          <!-- Caddy to Browser arrow (horizontal, bidirectional label) -->
+          <line class="conn" x1="420" y1="78" x2="290" y2="78"/>
+          <text class="box-item" x="340" y="70" text-anchor="middle">HTTPS</text>
+
+          <!-- APPLICATION LAYER -->
+          <text class="layer-label" x="20" y="168">Application</text>
+
+          <!-- Flask API box -->
+          <rect x="20" y="178" width="580" height="100" rx="6" fill="url(#g2)" stroke="#10b981" stroke-width="1.5"/>
+          <text class="box-title" x="34" y="198">Flask API Server</text>
+          <text class="box-item" x="34" y="218">Authentication middleware</text>
+          <text class="box-item" x="34" y="234">Streaming chat proxy</text>
+          <text class="box-item" x="34" y="250">Session CRUD</text>
+          <text class="box-item" x="34" y="266">Mode prompts</text>
+          <text class="box-item" x="220" y="218">Language detection</text>
+          <text class="box-item" x="220" y="234">Analytics capture</text>
+          <text class="box-item" x="220" y="250">STT/TTS orchestration</text>
+          <text class="box-item" x="220" y="266">Metadata scheduler</text>
+          <text class="box-item" x="420" y="218">Analytics dashboard</text>
+          <text class="box-item" x="420" y="234">GPU utilization</text>
+          <text class="box-item" x="420" y="250">GeoIP lookup</text>
+          <text class="box-item" x="420" y="266">Rate limiting</text>
+
+          <!-- Browser to Flask arrow -->
+          <line class="conn" x1="150" y1="128" x2="150" y2="172"/>
+
+          <!-- DATA & INFERENCE LAYER -->
+          <text class="layer-label" x="20" y="318">Data &amp; Inference</text>
+
+          <!-- Ollama LLM box -->
+          <rect x="20" y="328" width="180" height="100" rx="6" fill="url(#g3)" stroke="#8b5cf6" stroke-width="1.5"/>
+          <text class="box-title" x="34" y="348">Ollama LLM</text>
+          <text class="box-item" x="34" y="368">6 curated models</text>
+          <text class="box-item" x="34" y="384">Streaming /api/chat</text>
+          <text class="box-item" x="34" y="400">Model allowlist</text>
+          <text class="box-item" x="34" y="416">localhost:11434</text>
+
+          <!-- Neural Speech box -->
+          <rect x="220" y="328" width="160" height="100" rx="6" fill="url(#g3)" stroke="#8b5cf6" stroke-width="1.5"/>
+          <text class="box-title" x="234" y="348">Neural Speech</text>
+          <text class="box-item" x="234" y="368">Whisper STT</text>
+          <text class="box-item" x="234" y="384">Coqui TTS</text>
+          <text class="box-item" x="234" y="400">Quality presets</text>
+          <text class="box-item" x="234" y="416">Multi-language</text>
+
+          <!-- Storage box -->
+          <rect x="400" y="328" width="200" height="100" rx="6" fill="url(#g4)" stroke="#f59e0b" stroke-width="1.5"/>
+          <text class="box-title" x="414" y="348">Storage</text>
+          <text class="box-item" x="414" y="368">chats/*.json sessions</text>
+          <text class="box-item" x="414" y="384">SQLite analytics</text>
+          <text class="box-item" x="414" y="400">GeoIP database</text>
+          <text class="box-item" x="414" y="416">Structured logs</text>
+
+          <!-- Flask to Ollama arrow -->
+          <line class="conn-dash" x1="110" y1="278" x2="110" y2="322"/>
+
+          <!-- Flask to Neural Speech arrow -->
+          <line class="conn-dash" x1="300" y1="278" x2="300" y2="322"/>
+
+          <!-- Flask to Storage arrow -->
+          <line class="conn-dash" x1="500" y1="278" x2="500" y2="322"/>
+
+          <!-- Labels for connections -->
+          <text class="box-item" x="130" y="302">LLM</text>
+          <text class="box-item" x="315" y="302">Speech</text>
+          <text class="box-item" x="515" y="302">Data</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="docs-section">
+      <h2>Request Flow</h2>
+      <p>How a user message travels through the system:</p>
+      <ol>
+        <li><strong>User input:</strong> The composer captures text (or transcribed speech) and builds a message array with mode and model selection.</li>
+        <li><strong>API call:</strong> The browser streams <code>POST /api/stream</code> with messages, mode (fast/normal/deep), and optional model override.</li>
+        <li><strong>Language detection:</strong> The backend analyzes the latest user message and tags it with an ISO language code (en/es/fr).</li>
+        <li><strong>Prompt assembly:</strong> Flask injects a localized system prompt based on mode + language, plus a language guard to ensure reply consistency.</li>
+        <li><strong>LLM inference:</strong> The request proxies to Ollama's streaming endpoint; tokens arrive chunk by chunk.</li>
+        <li><strong>Response cleanup:</strong> Hidden <code>&lt;think&gt;</code> reasoning blocks are stripped in real-time before reaching the client.</li>
+        <li><strong>Final steps:</strong> The UI renders streaming tokens, captures metrics (TTFT, tok/s), and persists the session to disk.</li>
+      </ol>
+    </section>
+
+    <section class="docs-section">
+      <h2>Core Components</h2>
+      <p><strong>Browser SPA</strong> — Single-page application served from <code>static/</code>. Handles streaming chat, session sidebar, settings panel, and speech I/O. State persisted in localStorage.</p>
+      <p><strong>Flask API</strong> — Lightweight Python server with modular blueprints. Handles auth, streaming proxy, session CRUD, analytics, and speech endpoints.</p>
+      <p><strong>Ollama LLM</strong> — Local model inference server running on localhost. Streams tokens via <code>/api/chat</code> with curated model allowlist.</p>
+      <p><strong>Speech-to-Text</strong> — Whisper-based neural transcription. Supports browser Web Speech API or server-side Whisper with configurable model/device.</p>
+      <p><strong>Text-to-Speech</strong> — Coqui TTS neural synthesis with quality presets (normal/better/best). Streams chunked audio as NDJSON WAV.</p>
+      <p><strong>Storage Layer</strong> — JSON files for chat sessions, SQLite for analytics, GeoIP database for country lookup, and structured log files.</p>
+      <p><strong>Edge Proxy</strong> — Caddy reverse proxy handles TLS termination, HTTPS certificates, and forwards traffic to Flask on localhost.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Benchmark Subsystem</h2>
+      <p>The benchmark subsystem is a separate execution path from normal chat requests. It runs controlled tasks across models/datasets, persists run state, and exposes read APIs used by docs pages.</p>
+      <ul>
+        <li><strong>Runner:</strong> Executes benchmark scope (models, datasets, tasks), records per-task outcomes, and updates run lifecycle status.</li>
+        <li><strong>Run state storage:</strong> Persists benchmark telemetry and task status for safe resume/reset behavior.</li>
+        <li><strong>Read APIs:</strong> Exposes benchmark status/dataset/last-task endpoints consumed by the monitor UI.</li>
+        <li><strong>Report layer:</strong> <code>benchmark.html</code> and <code>benchmark_claude.html</code> provide post-run analysis views over collected results.</li>
+        <li><strong>Live monitor:</strong> <code>benchmark_monitor.html</code> polls run state and metrics to visualize progress in near real time.</li>
+      </ul>
+      <p><strong>Operational split:</strong> reports are static analysis snapshots; monitor is runtime observability for in-progress runs.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Project Structure</h2>
+      <pre><code>local-chat/
+├── app.py                     # Flask entry point, auth middleware, blueprint registration
+├── src/
+│   ├── api/                   # Route blueprints
+│   │   ├── chat_routes.py     # Streaming chat, mode prompts, metrics
+│   │   ├── session_routes.py  # Session CRUD operations
+│   │   ├── stt.py             # Whisper speech-to-text endpoint
+│   │   ├── tts.py             # Coqui text-to-speech endpoint
+│   │   ├── auth_routes.py     # Login/logout, token management
+│   │   ├── dashboard_routes.py# Dashboard analytics API
+│   │   └── analytics_routes.py# Client action tracking
+│   ├── core/                  # Configuration and utilities
+│   │   ├── config.py          # Environment variables, model allowlist
+│   │   ├── auth.py            # Token storage and validation
+│   │   ├── analytics.py       # SQLite analytics helpers
+│   │   └── logging.py         # Structured logging setup
+│   ├── services/              # Business logic layer
+│   │   ├── session.py         # Session storage and persistence
+│   │   ├── metadata.py        # AI title/summary generation, idle scheduler
+│   │   ├── ollama.py          # LLM client helpers
+│   │   ├── geoip.py           # Country lookup service
+│   │   └── gpu.py             # GPU utilization reading
+│   └── audio/                 # Speech processing
+│       ├── common.py          # Shared audio utilities
+│       └── tts/               # TTS runtime, chunking, normalization
+├── static/                    # Frontend assets
+│   ├── index.html             # Main SPA shell
+│   ├── admin.html             # Analytics dashboard
+│   ├── js/                    # JavaScript modules
+│   ├── css/                   # Theme and UI styles
+│   └── docs/                  # Documentation pages
+├── benchmark/                 # Benchmark framework and assets
+│   ├── run_benchmark.py       # Benchmark runner entry point
+│   ├── config*.yaml           # Benchmark scope/config presets
+│   ├── datasets/              # Task datasets (chat + shortform)
+│   ├── magistral/             # Benchmark scripts and model-specific runs
+│   ├── results/               # Generated benchmark outputs
+│   └── archive/               # Historical benchmark docs/experiments
+├── chats/                     # Session storage (JSON files per user)
+├── db/                        # Analytics SQLite + GeoIP database
+├── log/                       # Server logs
+└── deploy/                    # Deployment scripts and Caddyfile</code></pre>
+    </section>
+
+    <section class="docs-section">
+      <h2>API Reference</h2>
+      <p>All <code>/api/*</code> endpoints require Bearer token authentication (except <code>/api/login</code>). Streaming endpoints return plain text or NDJSON.</p>
+      <table>
+        <thead>
+          <tr><th>Endpoint</th><th>Method</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/api/login</code></td><td>POST</td><td>Authenticate and receive token</td></tr>
+          <tr><td><code>/api/stream</code></td><td>POST</td><td>Stream chat completion</td></tr>
+          <tr><td><code>/api/chat</code></td><td>POST</td><td>Non-streaming chat</td></tr>
+          <tr><td><code>/api/stop</code></td><td>POST</td><td>Cancel active stream</td></tr>
+          <tr><td><code>/api/metrics</code></td><td>GET</td><td>Retrieve stream metrics (TTFT, tok/s, tokens)</td></tr>
+          <tr><td><code>/api/sessions</code></td><td>GET</td><td>List user sessions</td></tr>
+          <tr><td><code>/api/session</code></td><td>GET/DELETE</td><td>Load or delete session</td></tr>
+          <tr><td><code>/api/save</code></td><td>POST</td><td>Persist session to disk</td></tr>
+          <tr><td><code>/api/stt</code></td><td>POST</td><td>Transcribe audio</td></tr>
+          <tr><td><code>/api/tts/speak</code></td><td>POST</td><td>Synthesize speech (NDJSON audio stream)</td></tr>
+          <tr><td><code>/api/gpu</code></td><td>GET</td><td>GPU utilization</td></tr>
+          <tr><td><code>/api/benchmark/status</code></td><td>GET</td><td>Current benchmark run status and scope</td></tr>
+          <tr><td><code>/api/benchmark/datasets</code></td><td>GET</td><td>Dataset-level progress and task completion summary</td></tr>
+          <tr><td><code>/api/benchmark/last_task</code></td><td>GET</td><td>Last executed task details for monitor display</td></tr>
+          <tr><td><code>/config</code></td><td>GET</td><td>Runtime configuration</td></tr>
+          <tr><td><code>/health</code></td><td>GET</td><td>Ollama availability check</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="docs-section">
+      <h2>Inference Pipeline</h2>
+      <p>The inference pipeline is deterministic and fully local. It assembles a prompt, streams tokens, sanitizes hidden reasoning, and renders rich UI output.</p>
+      <div style="overflow-x: auto; margin: 24px 0;">
+        <svg viewBox="0 0 760 360" width="100%" style="max-width: 760px; display: block; margin: 0 auto;" role="img" aria-label="Inference pipeline diagram">
+          <defs>
+            <linearGradient id="pipeA" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#0ea5e9" stop-opacity="0.05"/>
+            </linearGradient>
+            <linearGradient id="pipeB" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#22c55e" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#22c55e" stop-opacity="0.05"/>
+            </linearGradient>
+            <linearGradient id="pipeC" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.05"/>
+            </linearGradient>
+            <linearGradient id="pipeD" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.05"/>
+            </linearGradient>
+            <marker id="pipeArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,8 L8,4 z" fill="#64748b"/>
+            </marker>
+          </defs>
+          <style>
+            .pipe-title { font: 600 12px system-ui, sans-serif; fill: #1e293b; }
+            .pipe-item { font: 400 10px system-ui, sans-serif; fill: #475569; }
+            .pipe-conn { stroke: #64748b; stroke-width: 1.5; fill: none; marker-end: url(#pipeArrow); }
+            @media (prefers-color-scheme: dark) {
+              .pipe-title { fill: #f1f5f9; }
+              .pipe-item { fill: #cbd5e1; }
+            }
+          </style>
+
+          <rect x="20" y="20" width="200" height="90" rx="8" fill="url(#pipeA)" stroke="#0ea5e9" stroke-width="1.5"/>
+          <text class="pipe-title" x="34" y="42">User Messages</text>
+          <text class="pipe-item" x="34" y="58">Conversation history</text>
+          <text class="pipe-item" x="34" y="74">Mode + model choices</text>
+          <text class="pipe-item" x="34" y="90">Language hints</text>
+
+          <rect x="280" y="20" width="200" height="90" rx="8" fill="url(#pipeB)" stroke="#22c55e" stroke-width="1.5"/>
+          <text class="pipe-title" x="294" y="42">Prompt Assembly</text>
+          <text class="pipe-item" x="294" y="58">Detect request language</text>
+          <text class="pipe-item" x="294" y="74">System prompt (mode)</text>
+          <text class="pipe-item" x="294" y="90">Language guard</text>
+
+          <rect x="540" y="20" width="200" height="90" rx="8" fill="url(#pipeD)" stroke="#8b5cf6" stroke-width="1.5"/>
+          <text class="pipe-title" x="554" y="42">Streaming Inference</text>
+          <text class="pipe-item" x="554" y="58">/api/stream → Ollama</text>
+          <text class="pipe-item" x="554" y="74">Chunked tokens</text>
+          <text class="pipe-item" x="554" y="90">/api/metrics stats</text>
+
+          <rect x="150" y="170" width="220" height="90" rx="8" fill="url(#pipeC)" stroke="#f59e0b" stroke-width="1.5"/>
+          <text class="pipe-title" x="164" y="192">Output Sanitization</text>
+          <text class="pipe-item" x="164" y="208">Strip &lt;think&gt; blocks</text>
+          <text class="pipe-item" x="164" y="224">Normalize whitespace</text>
+          <text class="pipe-item" x="164" y="240">Safe display text</text>
+
+          <rect x="430" y="170" width="220" height="90" rx="8" fill="url(#pipeA)" stroke="#0ea5e9" stroke-width="1.5"/>
+          <text class="pipe-title" x="444" y="192">UI Render</text>
+          <text class="pipe-item" x="444" y="208">Markdown → HTML</text>
+          <text class="pipe-item" x="444" y="224">LaTeX → MathJax</text>
+          <text class="pipe-item" x="444" y="240">Streaming diff + layout</text>
+
+          <line class="pipe-conn" x1="220" y1="65" x2="280" y2="65"/>
+          <line class="pipe-conn" x1="480" y1="65" x2="540" y2="65"/>
+          <line class="pipe-conn" x1="640" y1="110" x2="540" y2="170"/>
+          <line class="pipe-conn" x1="370" y1="215" x2="430" y2="215"/>
+        </svg>
+      </div>
+      <p><strong>Step objectives:</strong></p>
+      <ul>
+        <li><strong>Language detection:</strong> Keep system prompt in the user's language for stable style.</li>
+        <li><strong>System prompt:</strong> Enforce mode constraints and block chain-of-thought output.</li>
+        <li><strong>Language guard:</strong> Prevent drift in multilingual conversations.</li>
+        <li><strong>Streaming proxy:</strong> Preserve real-time UX while isolating Ollama.</li>
+        <li><strong>Sanitization:</strong> Remove hidden reasoning before the UI sees it.</li>
+        <li><strong>UI render:</strong> Convert Markdown + LaTeX into formatted output with MathJax.</li>
+        <li><strong>Metrics:</strong> Capture TTFT, tokens/sec, and totals for diagnostics.</li>
+      </ul>
+      <p><strong>Mode prompts:</strong> Each mode injects a localized system prompt that controls response length and format:</p>
+      <ul>
+        <li><strong>Fast:</strong> "Answer in ≤2 plain sentences" — for quick factual queries.</li>
+        <li><strong>Normal:</strong> "Reply plainly in ≤8 sentences; no tables" — balanced responses.</li>
+        <li><strong>Deep:</strong> "Explain thoroughly with brief lists when useful" — detailed explanations.</li>
+      </ul>
+      <p><strong>Model routing:</strong> The backend enforces a model allowlist configured via environment variables. Users can select from curated models in the UI, but unauthorized models are rejected.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Neural Speech</h2>
+      <p><strong>Whisper STT:</strong> The model slices audio into mel spectrograms, processes them through a Transformer encoder, then decodes tokens autoregressively. Configurable model size (tiny → large), CPU or GPU inference, beam search with temperature, and automatic language detection.</p>
+      <p><strong>Coqui TTS:</strong> Text is normalized and chunked, then a neural vocoder predicts mel spectrograms from character/phoneme embeddings. A decoder converts spectrograms to raw audio waveforms. Quality presets (normal/better/best), multi-language voice selection, and NDJSON streaming for low latency.</p>
+      <table>
+        <thead>
+          <tr><th>Mode</th><th>STT Path</th><th>TTS Path</th><th>Latency</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Browser</td><td>Web Speech API</td><td>SpeechSynthesis API</td><td>~50ms</td></tr>
+          <tr><td>Server</td><td>Whisper neural model</td><td>Coqui neural vocoder</td><td>~500-2000ms</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="docs-section">
+      <h2>Data Model</h2>
+      <p><strong>Session Object:</strong> Each chat session is stored as a JSON file:</p>
+      <pre><code>{
+  "id": "abc123def456",
+  "owner": "username",
+  "title": "User-defined title",
+  "title_ai": "AI-generated title",
+  "summary_ai": "Brief conversation summary",
+  "pinned": false,
+  "updated_at": "2025-12-30T10:30:00+00:00",
+  "messages": [
+    { "role": "user", "content": "Hello!", "language_ai": "en" },
+    { "role": "assistant", "content": "Hi there! How can I help?" }
+  ]
+}</code></pre>
+      <p><strong>Analytics Schema:</strong> Request telemetry logged to SQLite:</p>
+      <pre><code>CREATE TABLE analytics (
+  id INTEGER PRIMARY KEY,
+  ts TEXT,              -- ISO timestamp
+  username TEXT,        -- Authenticated user
+  method TEXT,          -- HTTP method
+  path TEXT,            -- Request path
+  ip TEXT,              -- Client IP
+  country TEXT,         -- GeoIP country code
+  user_agent TEXT,      -- Raw UA string
+  ua_browser TEXT,      -- Parsed browser
+  ua_os TEXT,           -- Parsed OS
+  ua_device TEXT,       -- Device type
+  group_label TEXT,     -- Action category
+  subgroup_label TEXT   -- Action detail
+);</code></pre>
+    </section>
+
+    <section class="docs-section">
+      <h2>Model Catalog</h2>
+      <p>The UI exposes a curated selection of LLMs optimized for different use cases:</p>
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Parameters</th><th>Architecture</th><th>Owner</th><th>Best For</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>gemma3:4b</code></td><td>4.3B</td><td>Dense</td><td>Google</td><td>Speed-critical interactive chat</td></tr>
+          <tr><td><code>deepseek-r1:8b</code></td><td>8.2B</td><td>Dense</td><td>DeepSeek</td><td>Reasoning and analysis</td></tr>
+          <tr><td><code>qwen3:8b</code></td><td>8.2B</td><td>Dense</td><td>Alibaba</td><td>Balanced general-purpose</td></tr>
+          <tr><td><code>gpt-oss:20b</code></td><td>20.9B</td><td>MoE</td><td>OpenAI</td><td>Quality content generation</td></tr>
+          <tr><td><code>magistral:24b</code></td><td>23.6B</td><td>Dense</td><td>Mistral AI</td><td>Multilingual specialist</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="docs-section">
+      <h2>Security Model</h2>
+      <ul>
+        <li><strong>Authentication:</strong> Basic auth or Bearer tokens with configurable TTL. Tokens stored in-memory with automatic expiration. Guest mode available with rate limits.</li>
+        <li><strong>Authorization:</strong> Admin-only routes for analytics dashboard. Non-admin users restricted to allowed modes and models. Per-user chat isolation.</li>
+        <li><strong>Local Inference:</strong> Ollama binds to localhost only. No data leaves the machine unless explicitly configured. All models run on-device.</li>
+        <li><strong>TLS Termination:</strong> Caddy handles HTTPS with automatic certificate management. All external traffic encrypted in transit.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Configuration</h2>
+      <p>Key environment variables for customizing deployment:</p>
+      <table>
+        <thead>
+          <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>OLLAMA_URL</code></td><td>http://127.0.0.1:11434</td><td>Ollama server endpoint</td></tr>
+          <tr><td><code>MODEL</code></td><td>gpt-oss:20b</td><td>Default LLM model</td></tr>
+          <tr><td><code>SUMMARY_MODEL</code></td><td>gpt-oss:20b</td><td>Model for metadata generation</td></tr>
+          <tr><td><code>STT_MODE</code></td><td>browser</td><td>Speech-to-text mode (browser/whisper)</td></tr>
+          <tr><td><code>TTS_MODE</code></td><td>browser</td><td>Text-to-speech mode (browser/coqui)</td></tr>
+          <tr><td><code>WHISPER_MODEL</code></td><td>base</td><td>Whisper model size</td></tr>
+          <tr><td><code>WHISPER_DEVICE</code></td><td>cpu</td><td>Whisper inference device</td></tr>
+          <tr><td><code>TTS_QUALITY_DEFAULT</code></td><td>normal</td><td>TTS quality preset</td></tr>
+          <tr><td><code>AUTH_TOKEN_TTL</code></td><td>86400</td><td>Token lifetime in seconds</td></tr>
+          <tr><td><code>ECO_MODE</code></td><td>0</td><td>Enable resource-saving mode</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="docs-section">
+      <h2>Dependencies</h2>
+      <p>The stack is built on open-source components:</p>
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Owner</th><th>License</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Ollama</td><td>Ollama, Inc.</td><td>MIT</td><td>Local LLM inference server</td></tr>
+          <tr><td>Flask</td><td>Pallets Projects</td><td>BSD-3</td><td>Python web framework</td></tr>
+          <tr><td>Whisper</td><td>OpenAI</td><td>MIT</td><td>Speech recognition model</td></tr>
+          <tr><td>Coqui TTS</td><td>Coqui AI</td><td>MPL-2.0</td><td>Speech synthesis model</td></tr>
+          <tr><td>SQLite</td><td>SQLite Project</td><td>Public Domain</td><td>Embedded database</td></tr>
+          <tr><td>Caddy</td><td>Caddy Server</td><td>Apache-2.0</td><td>TLS reverse proxy</td></tr>
+          <tr><td>ECharts</td><td>Apache Foundation</td><td>Apache-2.0</td><td>Analytics visualization</td></tr>
+          <tr><td>MathJax</td><td>MathJax Consortium</td><td>Apache-2.0</td><td>Math equation rendering</td></tr>
+        </tbody>
+      </table>
+      <p class="docs-note">Licenses may change. Verify current terms in each upstream repository.</p>
+    </section>
+
+    <footer class="docs-footer">
+      <a href="/docs/user.html" class="docs-footer-prev">← User Guide</a>
+      <a href="/docs/engineering.html" class="docs-footer-next">Engineering →</a>
+    </footer>
+  </main>
+  <script src="/js/docs_theme.js"></script>
+</body>
+</html>

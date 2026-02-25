@@ -1,0 +1,3255 @@
+<!DOCTYPE html>
+<html lang="en" class="docs-page">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Benchmark Monitor</title>
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/ui.css">
+    <link rel="stylesheet" href="/css/docs.css">
+    <script data-theme-bootstrap>
+        (function () {
+            const key = 'theme';
+            const root = document.documentElement;
+            let theme = null;
+            try { theme = localStorage.getItem(key); } catch {}
+            if (theme !== 'dark' && theme !== 'light') {
+                try {
+                    theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                } catch {
+                    theme = 'light';
+                }
+            }
+            if (theme === 'dark') {
+                root.dataset.theme = 'dark';
+                root.classList.add('dark');
+            }
+        })();
+    </script>
+    <script>
+        (function () {
+            const key = 'benchmark_monitor.chrome_hidden';
+            try {
+                if (localStorage.getItem(key) === '1') {
+                    document.documentElement.classList.add('monitor-chrome-hidden');
+                }
+            } catch {}
+        })();
+    </script>
+    <script>
+        window.GPU_GAUGE_ALWAYS_SHOW = true;
+    </script>
+    <script src="../js/echarts.min.js"></script>
+    <script defer src="../js/app_gpu.js"></script>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --muted: var(--text-secondary);
+            --monitor-accent: #3b82f6;
+            --success: #22c55e;
+            --card-border: rgba(15, 23, 42, 0.12);
+            --track-bg: rgba(15, 23, 42, 0.12);
+            --chip-bg: rgba(148, 163, 184, 0.15);
+            --chip-bg-strong: rgba(59, 130, 246, 0.08);
+            --content-bg: rgba(59, 130, 246, 0.08);
+            --content-border: rgba(148, 163, 184, 0.2);
+            --chart-title: #0f172a;
+            --chart-axis: #64748b;
+            --chart-split: #cbd5e1;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            --card-height: 250px;
+        }
+
+        :root[data-theme="dark"] {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --card-border: rgba(255,255,255,0.1);
+            --track-bg: rgba(255,255,255,0.1);
+            --chip-bg: rgba(15, 23, 42, 0.45);
+            --chip-bg-strong: rgba(15, 23, 42, 0.45);
+            --content-bg: rgba(15, 23, 42, 0.35);
+            --content-border: rgba(148, 163, 184, 0.1);
+            --chart-title: #f8fafc;
+            --chart-axis: #94a3b8;
+            --chart-split: #334155;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            box-sizing: border-box;
+            overflow: auto;
+        }
+
+        .monitor-content {
+            padding: 96px 20px 20px;
+            display: grid;
+            gap: 20px;
+            min-height: 100vh;
+            grid-auto-rows: max-content;
+            align-content: start;
+        }
+
+        .monitor-chrome-toggle {
+            position: fixed;
+            top: 10px;
+            right: 12px;
+            z-index: 220;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            color: var(--text-secondary);
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 11px;
+            line-height: 1;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .monitor-chrome-toggle:hover {
+            color: var(--text-primary);
+        }
+
+        html.monitor-chrome-hidden .docs-nav {
+            display: none;
+        }
+
+        html.monitor-chrome-hidden .monitor-content {
+            padding-top: 20px;
+        }
+
+        html.monitor-chrome-hidden .monitor-content > .docs-header {
+            display: none;
+        }
+
+        /* Header Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--card-border);
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .stats-grid .card {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stats-grid > .card,
+        .stats-grid > .chart-wrapper {
+            height: var(--card-height);
+            overflow: hidden;
+        }
+
+        .stats-grid > .card {
+            padding: 8px 12px;
+        }
+
+        .charts-container > .chart-wrapper {
+            padding: 8px 12px;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .stat-subvalue {
+            margin-top: 6px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            word-break: break-word;
+        }
+
+        .progress-bar-container {
+            height: 8px;
+            background: var(--track-bg);
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--monitor-accent);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Charts */
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            grid-auto-rows: var(--card-height);
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        .chart-wrapper {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            height: auto;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+            box-sizing: border-box;
+        }
+
+        .charts-container > .chart-wrapper {
+            height: var(--card-height);
+        }
+
+        .stats-chart {
+            height: 100%;
+        }
+
+        .chart-wrapper > div,
+        .chart-wrapper canvas {
+            border-radius: 12px;
+        }
+
+        #tempChart {
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* GPU gauge */
+        .gpu-gauge {
+            --gpu-gauge-width: 40px;
+            --gpu-gauge-cool: #fde68a;
+            --gpu-gauge-warm: #f59e0b;
+            --gpu-gauge-hot: #ef4444;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            color: var(--muted);
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            justify-content: center;
+            min-width: var(--gpu-gauge-width);
+            width: var(--gpu-gauge-width);
+            max-width: var(--gpu-gauge-width);
+            flex: 0 0 var(--gpu-gauge-width);
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .gpu-gauge.hidden {
+            display: inline-flex;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .gpu-gauge.is-visible {
+            opacity: 1;
+        }
+
+        .gpu-gauge-pill {
+            min-width: 18px;
+            padding: 0;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: transparent;
+            border: 0;
+            color: var(--muted);
+            line-height: 1;
+        }
+
+        .gpu-gauge-pill-stack {
+            display: inline-flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .gpu-gauge-pill-light {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #d1d5db;
+            opacity: 0.3;
+            transition: opacity 0.2s ease;
+        }
+
+        .gpu-gauge-pill-light[data-light="cool"] {
+            background: var(--gpu-gauge-cool);
+        }
+
+        .gpu-gauge-pill-light[data-light="warm"] {
+            background: var(--gpu-gauge-warm);
+        }
+
+        .gpu-gauge-pill-light[data-light="hot"] {
+            background: var(--gpu-gauge-hot);
+        }
+
+        .gpu-gauge-textonly {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            line-height: 1;
+            color: var(--muted);
+        }
+
+        .gpu-gauge-textonly-label {
+            font-size: 10px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .gpu-gauge-textonly-value {
+            font-size: 20px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .gpu-gauge-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+        }
+
+        .gpu-gauge-label,
+        .gpu-gauge-textonly-label {
+            display: none;
+        }
+
+        .gpu-gauge-pill,
+        .gpu-gauge-textonly {
+            display: none;
+        }
+
+        .gpu-gauge[data-variant="pill"] .gpu-gauge-textonly {
+            display: none;
+        }
+
+        .gpu-gauge[data-variant="pill"] .gpu-gauge-pill {
+            display: inline-flex;
+        }
+
+        .gpu-gauge[data-variant="text"] .gpu-gauge-pill {
+            display: none;
+        }
+
+        .gpu-gauge[data-variant="pill"] .gpu-gauge-label,
+        .gpu-gauge[data-variant="text"] .gpu-gauge-label {
+            display: none;
+        }
+
+        .gpu-gauge[data-variant="text"] .gpu-gauge-textonly {
+            display: inline-flex;
+        }
+
+        .gpu-gauge[data-level="cool"] .gpu-gauge-textonly-value {
+            color: var(--gpu-gauge-cool);
+        }
+
+        .gpu-gauge[data-level="warm"] .gpu-gauge-textonly-value {
+            color: var(--gpu-gauge-warm);
+        }
+
+        .gpu-gauge[data-level="hot"] .gpu-gauge-textonly-value {
+            color: var(--gpu-gauge-hot);
+        }
+
+        .gpu-gauge[data-level="cool"] .gpu-gauge-pill-light,
+        .gpu-gauge[data-level="warm"] .gpu-gauge-pill-light,
+        .gpu-gauge[data-level="hot"] .gpu-gauge-pill-light {
+            opacity: 0.25;
+        }
+
+        .gpu-gauge[data-level="cool"] .gpu-gauge-pill-light[data-light="cool"],
+        .gpu-gauge[data-level="warm"] .gpu-gauge-pill-light[data-light="warm"],
+        .gpu-gauge[data-level="hot"] .gpu-gauge-pill-light[data-light="hot"] {
+            opacity: 1;
+        }
+
+        .last-request-card {
+            text-align: left;
+        }
+
+        .last-request-meta {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        .ongoing-card {
+            height: 30%;
+            min-height: 110px;
+            max-height: 140px;
+            overflow: hidden;
+        }
+
+        .stat-num {
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            display: inline-block;
+        }
+
+        .stat-num.elapsed {
+            width: 9ch;
+        }
+
+        .stat-num.age {
+            text-align: right;
+        }
+
+        .dataset-card {
+            text-align: left;
+        }
+
+        .rag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .rag-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: var(--chip-bg-strong);
+            flex: 1 1 220px;
+            min-width: 200px;
+        }
+
+        .rag-score {
+            font-size: 1.6rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-primary);
+        }
+
+        .rag-score-wrap {
+            margin-left: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+            align-self: flex-start;
+        }
+
+        .rag-counter {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.04em;
+        }
+
+        .rag-title {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .rag-value {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .rag-sub {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .task-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .dataset-kpis {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 0.78rem;
+            letter-spacing: 0.01em;
+        }
+
+        .task-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: var(--chip-bg);
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+        }
+
+        .task-dot {
+            position: relative;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #64748b;
+        }
+
+        .task-pill[data-status="pass"] .task-dot {
+            background: var(--success);
+        }
+
+        .task-pill[data-status="fail"] .task-dot,
+        .task-pill[data-status="error"] .task-dot {
+            background: #ef4444;
+        }
+
+        .task-pill[data-status="pending"] .task-dot {
+            background: #64748b;
+        }
+
+        .task-pill[data-status="running"] .task-dot,
+        .task-pill[data-status="active"] .task-dot,
+        .task-pill[data-status="initializing"] .task-dot,
+        .task-pill.active .task-dot {
+            background: #f59e0b;
+        }
+
+        .task-pill[data-status="running"] .task-dot::before,
+        .task-pill[data-status="active"] .task-dot::before,
+        .task-pill[data-status="initializing"] .task-dot::before,
+        .task-pill.active .task-dot::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0.7);
+            background: radial-gradient(
+                circle,
+                rgba(245, 158, 11, 0.42) 0%,
+                rgba(245, 158, 11, 0.20) 45%,
+                rgba(245, 158, 11, 0.0) 78%
+            );
+            opacity: 0;
+            animation: haloBreath 2.8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes haloBreath {
+            0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+            45% { transform: translate(-50%, -50%) scale(1.25); opacity: 0.9; }
+            100% { transform: translate(-50%, -50%) scale(1.9); opacity: 0; }
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(96px, 0.5fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .metric-item {
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            padding: 8px 10px;
+            background: var(--chip-bg);
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+        }
+
+        .metric-value {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            margin-top: 4px;
+            color: var(--text-primary);
+        }
+
+        .task-section {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        .task-section:first-child {
+            margin-top: 8px;
+            padding-top: 0;
+            border-top: none;
+        }
+
+        .task-section-title {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .task-section-title::before {
+            content: '';
+            display: inline-block;
+            width: 3px;
+            height: 12px;
+            background: var(--monitor-accent);
+            border-radius: 2px;
+        }
+
+        .task-section-content {
+            font-size: 0.75rem;
+            line-height: 1.3;
+            color: var(--text-primary);
+            padding: 6px 8px;
+            background: var(--content-bg);
+            border-radius: 6px;
+            border: 1px solid var(--content-border);
+            font-family: var(--font-mono);
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            transition: opacity 1s ease-out;
+        }
+
+        .live-metrics {
+            display: none;
+            align-items: center;
+            gap: 20px;
+            padding: 12px 0;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        .live-metrics.active {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        .live-metric {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .live-metric-label {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .live-metric-value {
+            font-family: var(--font-mono);
+            font-weight: 400;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+        }
+
+        .live-metric-value.final {
+            font-weight: 700;
+            color: #22c55e;
+        }
+
+        .live-metric-value.live {
+            font-weight: 600;
+            color: #3b82f6;
+            animation: pulseLive 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseLive {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        .waiting-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(234, 179, 8, 0.12);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+        }
+
+        .waiting-indicator::before {
+            content: '⏳';
+            font-size: 1.1rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .waiting-reason {
+            font-weight: 600;
+            color: #eab308;
+        }
+
+        .waiting-detail {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+
+        /* Workflow Pills */
+        .workflow-pills-container-inline {
+            margin: 12px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        .workflow-pills-header-inline {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .workflow-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .workflow-pill {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            grid-template-areas:
+                "dot label"
+                "dot info";
+            align-items: center;
+            justify-items: center;
+            column-gap: 6px;
+            row-gap: 2px;
+            flex: 0 0 118px;
+            width: 118px;
+            padding: 6px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: var(--chip-bg-strong);
+            color: var(--text-primary);
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .workflow-pill .task-dot {
+            grid-area: dot;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #64748b;
+            position: relative;
+            align-self: center;
+        }
+
+        .workflow-pill.pending .task-dot {
+            background: #64748b;
+        }
+
+        .workflow-pill.active .task-dot {
+            background: #f59e0b;
+        }
+
+        .workflow-pill.active .task-dot::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0.7);
+            background: radial-gradient(
+                circle,
+                rgba(245, 158, 11, 0.42) 0%,
+                rgba(245, 158, 11, 0.20) 45%,
+                rgba(245, 158, 11, 0.0) 78%
+            );
+            opacity: 0;
+            animation: haloBreath 2.8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .workflow-pill.completed .task-dot {
+            background: var(--success);
+        }
+
+        .workflow-pill.failed .task-dot {
+            background: #ef4444;
+        }
+
+        .workflow-pill.retry .task-dot {
+            background: #3b82f6;
+        }
+
+        .pill-label {
+            grid-area: label;
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            color: var(--text-secondary);
+            justify-self: center;
+            line-height: 1;
+        }
+
+        .pill-info {
+            grid-area: info;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            justify-self: center;
+            line-height: 1;
+        }
+
+        /* Dataset/Task Pills */
+        .pills-group-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px 18px;
+            border: 1px solid var(--card-border);
+            margin-bottom: 20px;
+        }
+
+        .pills-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .pills-group-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .pills-group-controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .view-toggle-btn {
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: var(--chip-bg-strong);
+            color: var(--text-secondary);
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.72rem;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+        }
+
+        .view-toggle-btn.active {
+            color: var(--text-primary);
+            border-color: rgba(245, 158, 11, 0.9);
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        .view-toggle-btn[data-size="sm"] {
+            padding: 3px 8px;
+            font-size: 0.68rem;
+        }
+
+        .pills-section.is-hidden {
+            display: none;
+        }
+
+        .is-hidden {
+            display: none !important;
+        }
+
+        .pills-row-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 0;
+        }
+
+        .pills-section {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--card-border);
+        }
+
+        .pills-section-header {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .pills-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .dataset-pill, .task-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--chip-bg);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+
+        .dataset-pill.pending, .task-pill.pending {
+            background: var(--chip-bg);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        .dataset-pill.active, .task-pill.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .dataset-pill.completed, .task-pill.completed {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #86efac;
+        }
+
+        .dataset-pill.failed, .task-pill.failed {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+        }
+
+        .pill-icon {
+            font-size: 0.9rem;
+        }
+
+    </style>
+</head>
+<body>
+    <button type="button" id="chromeToggleBtn" class="monitor-chrome-toggle" aria-pressed="false">Hide header</button>
+    <nav class="docs-nav">
+        <a href="/" class="docs-nav-back">← Back to app</a>
+        <div class="docs-nav-links">
+            <a href="/docs/index.html">Index</a>
+            <a href="/docs/user.html">User Guide</a>
+            <a href="/docs/architecture.html">Architecture</a>
+            <a href="/docs/engineering.html">Engineering</a>
+            <a href="/docs/installation.html">Installation</a>
+      <a href="/docs/audience.html">Audience</a>
+      <a href="/docs/handwrite.html">About</a>
+      <a href="/docs/benchmark.html">Benchmarks</a>
+      <a href="/docs/benchmark_monitor.html" class="active">Benchmark Monitor</a>
+
+        </div>
+    </nav>
+
+    <main class="monitor-content">
+    <header class="docs-header">
+        <h1>Benchmark Monitor</h1>
+        <p style="color:var(--toggle-ink);font-size:17px;">Live telemetry, run progress, and last-task details while benchmarks execute.</p>
+    </header>
+
+    <!-- Top Stats Group -->
+    <div class="pills-group-card" id="topCardsGroupCard">
+        <div class="pills-group-header">
+            <div class="pills-group-title">Realtime Telemetry</div>
+            <div class="pills-group-controls">
+                <button type="button" class="view-toggle-btn active" data-size="sm" id="toggleTopTps" aria-pressed="true">TPS</button>
+                <button type="button" class="view-toggle-btn active" data-size="sm" id="toggleTopFd" aria-pressed="true">FD</button>
+                <button type="button" class="view-toggle-btn active" data-size="sm" id="toggleTopCpu" aria-pressed="true">CPU</button>
+                <button type="button" class="view-toggle-btn active" data-size="sm" id="toggleTopDisk" aria-pressed="true">Disk</button>
+                <button type="button" class="view-toggle-btn active" data-size="sm" id="toggleTopGpu" aria-pressed="true">GPU</button>
+                <button type="button" class="view-toggle-btn active" data-size="sm" id="toggleTopTemp" aria-pressed="true">Temp</button>
+            </div>
+        </div>
+        <div class="stats-grid">
+        <div class="chart-wrapper stats-chart" id="tpsChart"></div>
+        <div class="chart-wrapper stats-chart" id="fdChart"></div>
+        <div class="chart-wrapper stats-chart" id="cpuChart"></div>
+        <div class="chart-wrapper stats-chart" id="diskChart"></div>
+        <div class="chart-wrapper stats-chart" id="gpuChart"></div>
+        <div class="chart-wrapper stats-chart" id="tempChart"></div>
+        </div>
+    </div>
+
+    <!-- Dataset/Task Pills Group -->
+    <div class="pills-group-card" id="pillsGroupCard">
+        <div class="pills-group-header">
+            <div class="pills-group-title">Task Lists</div>
+            <div class="pills-group-controls">
+                <button type="button" class="view-toggle-btn active" id="toggleModelsOverview" aria-pressed="true">Models</button>
+                <button type="button" class="view-toggle-btn active" id="toggleDatasetsOverview" aria-pressed="true">Datasets Overview</button>
+                <button type="button" class="view-toggle-btn active" id="toggleCurrentDatasetTasks" aria-pressed="true">Current Dataset Tasks</button>
+            </div>
+        </div>
+        <div class="pills-row-container">
+            <div class="pills-section" id="modelsOverviewSection">
+                <div class="pills-section-header">Models</div>
+                <div class="task-grid" id="modelsOverviewPills"></div>
+            </div>
+            <div class="pills-section" id="datasetsOverviewSection">
+                <div class="pills-section-header">Datasets Overview</div>
+                <div class="task-grid" id="datasetsOverviewPills"></div>
+            </div>
+            <div class="pills-section" id="currentDatasetTasksSection">
+                <div class="pills-section-header">Current Dataset Tasks</div>
+                <div class="task-grid" id="taskGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card dataset-card" id="datasetDashboard">
+        <div class="pills-group-title" style="margin-bottom: 10px;">DASHBOARD</div>
+        <div id="waitingIndicator" style="display: none;"></div>
+        <div class="rag-row">
+            <div class="rag-item">
+                <div>
+                    <div class="rag-title">Server Status</div>
+                    <div class="rag-value" id="kpiModelName">-</div>
+                    <div class="rag-sub"><span id="kpiModelStatus">-</span> • <span id="kpiGpuTemp">-</span> • <span id="kpiThermalStatus">-</span></div>
+                </div>
+            </div>
+            <div class="rag-item">
+                <div>
+                    <div class="rag-title">Progress Snapshot</div>
+                    <div class="rag-value">Model <span id="kpiModelProgress">-</span> • Dataset <span id="kpiDatasetProgress">-</span> • Task <span id="kpiTaskProgress">-</span></div>
+                    <div class="rag-sub">
+                        OK <span id="kpiPassedPct" style="color: #22c55e;">-%</span> •
+                        KO <span id="kpiFalsePct" style="color: #ef4444;">-%</span> •
+                        OTHER <span id="kpiOthersPct" style="color: #f59e0b;">-%</span> •
+                        <span id="kpiCompletedCount">-</span> completed •
+                        <span id="kpiRemainingTasks">-</span> remaining
+                    </div>
+                </div>
+            </div>
+            <div class="rag-item">
+                <div>
+                    <div class="rag-title">Task Details</div>
+                    <div class="rag-value">Attempt <span id="kpiAttempt">-</span> • Status <span id="kpiTaskStatus">-</span></div>
+                    <div class="rag-sub">TTFT <span id="kpiTtft">-</span> • Speed <span id="kpiSpeed">-</span> • E2E <span id="kpiE2E">-</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card dataset-card" id="lastTaskCard">
+        <div class="pills-group-title" style="margin-bottom: 10px;">STREAMING DETAILS<span id="lastTaskPill" style="display: none; margin-left: 8px; padding: 2px 8px; background: rgba(251, 191, 36, 0.2); color: #fbbf24; border-radius: 4px; font-size: 0.7em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">last task</span></div>
+        
+        <!-- Workflow Pills -->
+        <div class="workflow-pills-container-inline">
+            <div class="task-section-title">Workflow Progress</div>
+            <div class="workflow-pills">
+                <div class="workflow-pill" id="pillCooling">
+                    <span class="task-dot" aria-hidden="true"></span>
+                    <div class="pill-label">COOLING</div>
+                    <div class="pill-info" id="pillCoolingInfo">--</div>
+                </div>
+                <div class="workflow-pill" id="pillThinking">
+                    <span class="task-dot" aria-hidden="true"></span>
+                    <div class="pill-label">THINKING</div>
+                    <div class="pill-info" id="pillThinkingInfo">--</div>
+                </div>
+                <div class="workflow-pill" id="pillStreaming">
+                    <span class="task-dot" aria-hidden="true"></span>
+                    <div class="pill-label">STREAMING</div>
+                    <div class="pill-info" id="pillStreamingInfo">--</div>
+                </div>
+                <div class="workflow-pill" id="pillEvaluating">
+                    <span class="task-dot" aria-hidden="true"></span>
+                    <div class="pill-label">EVALUATING</div>
+                    <div class="pill-info" id="pillEvaluatingInfo">--</div>
+                </div>
+                <div class="workflow-pill" id="pillDone">
+                    <span class="task-dot" aria-hidden="true"></span>
+                    <div class="pill-label">DONE</div>
+                    <div class="pill-info" id="pillDoneInfo">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="task-section" style="margin-top: 8px; padding-top: 0; border-top: none;">
+            <div class="task-section-title">Status</div>
+            <div class="task-section-content" id="taskStatus" style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">--</div>
+        </div>
+        <div class="task-section" id="lastTaskPromptSection">
+            <div class="task-section-title">Prompt</div>
+            <div class="task-section-content" id="lastTaskPrompt"></div>
+        </div>
+        <div class="task-section" id="lastTaskResponseSection">
+            <div class="task-section-title">Response</div>
+            <div class="task-section-content" id="lastTaskResponse"></div>
+        </div>
+        <div class="task-section" id="lastTaskResultSection">
+            <div class="task-section-title">Result</div>
+            <div class="task-section-content" id="lastTaskResult"></div>
+        </div>
+    </div>
+
+    <div id="gpuGauge" class="gpu-gauge hidden" style="position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden;">
+        <span data-gpu-value>--%</span>
+    </div>
+
+    <script>
+        // Init Charts
+        const TEMP_BANDS = [
+            { min: 10, max: 50, color: 'rgba(56, 189, 248, 0.18)' },
+            { min: 50, max: 70, color: 'rgba(34, 197, 94, 0.18)' },
+            { min: 70, max: 85, color: 'rgba(234, 179, 8, 0.2)' },
+            { min: 85, max: 95, color: 'rgba(249, 115, 22, 0.22)' },
+            { min: 95, max: 120, color: 'rgba(239, 68, 68, 0.24)' }
+        ];
+        const DISK_BANDS = [
+            { min: 0, max: 1, color: 'rgba(34, 197, 94, 0.18)' },
+            { min: 1, max: 5, color: 'rgba(234, 179, 8, 0.2)' },
+            { min: 5, max: 10, color: 'rgba(239, 68, 68, 0.24)' }
+        ];
+        const CPU_BANDS = [
+            { min: 0, max: 20, color: 'rgba(34, 197, 94, 0.18)' },
+            { min: 20, max: 50, color: 'rgba(56, 189, 248, 0.18)' },
+            { min: 50, max: 70, color: 'rgba(234, 179, 8, 0.2)' },
+            { min: 70, max: 100, color: 'rgba(239, 68, 68, 0.24)' }
+        ];
+        let diskAxisMaxLog = 2;
+        const tpsChart = echarts.init(document.getElementById('tpsChart'));
+        const fdChart = echarts.init(document.getElementById('fdChart'));
+        const gpuChart = echarts.init(document.getElementById('gpuChart'));
+        const cpuChart = echarts.init(document.getElementById('cpuChart'));
+        const tempChart = echarts.init(document.getElementById('tempChart'));
+        const diskChart = echarts.init(document.getElementById('diskChart'));
+        const cssVars = getComputedStyle(document.documentElement);
+        const chartTitleColor = cssVars.getPropertyValue('--chart-title').trim() || '#0f172a';
+        const chartAxisColor = cssVars.getPropertyValue('--chart-axis').trim() || '#64748b';
+        const chartSplitColor = cssVars.getPropertyValue('--chart-split').trim() || '#cbd5e1';
+        const mutedTextColor = cssVars.getPropertyValue('--text-secondary').trim() || '#64748b';
+        
+        const commonChartOptions = {
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'axis' },
+            grid: { top: 52, right: 20, bottom: 26, left: 52, containLabel: false },
+            xAxis: { 
+                type: 'category', 
+                show: false,
+                axisLine: { show: false },
+                axisTick: { show: false },
+                axisLabel: { show: false },
+                splitLine: { show: false }
+            },
+            yAxis: { 
+                type: 'value',
+                min: 0,
+                max: 100,
+                alignTicks: true,
+                interval: 25,
+                boundaryGap: [0, 0],
+                splitLine: { lineStyle: { color: chartSplitColor } },
+                axisLabel: {
+                    color: chartAxisColor,
+                    showMinLabel: true,
+                    showMaxLabel: true,
+                    margin: 8
+                }
+            }
+        };
+
+        tpsChart.setOption({
+            ...commonChartOptions,
+            title: { text: 'Tokens / Sec', textStyle: { color: chartTitleColor, fontSize: 14 } },
+            yAxis: {
+                ...commonChartOptions.yAxis,
+                max: 150,
+                interval: 30
+            },
+            series: [{
+                type: 'bar',
+                data: [],
+                barWidth: '100%',
+                itemStyle: { color: '#22c55e' }
+            }]
+        });
+
+        fdChart.setOption({
+            ...commonChartOptions,
+            animation: false,
+            animationDurationUpdate: 0,
+            title: { text: 'File Descriptors', textStyle: { color: chartTitleColor, fontSize: 14 } },
+            yAxis: {
+                ...commonChartOptions.yAxis,
+                min: 0,
+                max: 1000,
+                interval: 200,
+                axisLabel: {
+                    ...commonChartOptions.yAxis.axisLabel,
+                    formatter: '{value}'
+                }
+            },
+            series: [{
+                type: 'line',
+                smooth: true,
+                connectNulls: false,
+                symbol: 'circle',
+                symbolSize: 4,
+                data: [],
+                color: '#a78bfa',
+                areaStyle: { opacity: 0.15 },
+                lineStyle: { width: 2 },
+                markArea: {
+                    silent: true,
+                    data: [
+                        [{ yAxis: 0, itemStyle: { color: 'rgba(34, 197, 94, 0.15)' } }, { yAxis: 300 }],
+                        [{ yAxis: 300, itemStyle: { color: 'rgba(234, 179, 8, 0.18)' } }, { yAxis: 500 }],
+                        [{ yAxis: 500, itemStyle: { color: 'rgba(239, 68, 68, 0.2)' } }, { yAxis: 1000 }]
+                    ]
+                }
+            }]
+        });
+
+        gpuChart.setOption({
+            ...commonChartOptions,
+            animation: false,
+            animationDurationUpdate: 0,
+            title: { text: 'GPU Busy (%)', textStyle: { color: chartTitleColor, fontSize: 14 } },
+            yAxis: {
+                ...commonChartOptions.yAxis,
+                axisLabel: {
+                    ...commonChartOptions.yAxis.axisLabel,
+                    formatter: '{value}%'
+                }
+            },
+            series: [{
+                type: 'bar',
+                data: [],
+                barWidth: 3,
+                barGap: '30%',
+                barCategoryGap: '35%',
+                itemStyle: { color: '#f59e0b' }
+            }]
+        });
+
+        cpuChart.setOption({
+            ...commonChartOptions,
+            animation: false,
+            animationDurationUpdate: 0,
+            title: { text: 'CPU Busy (%)', textStyle: { color: chartTitleColor, fontSize: 14 } },
+            yAxis: {
+                ...commonChartOptions.yAxis,
+                interval: 20,
+                axisLabel: {
+                    ...commonChartOptions.yAxis.axisLabel,
+                    formatter: '{value}%'
+                }
+            },
+            series: [{
+                type: 'bar',
+                data: [],
+                barWidth: 3,
+                barGap: '30%',
+                barCategoryGap: '35%',
+                itemStyle: { color: '#14b8a6' },
+                markArea: {
+                    silent: true,
+                    data: CPU_BANDS.map((band) => [
+                        { yAxis: band.min, itemStyle: { color: band.color } },
+                        { yAxis: band.max }
+                    ])
+                }
+            }]
+        });
+
+        tempChart.setOption({
+            ...commonChartOptions,
+            title: { text: 'GPU Temp (°C)', textStyle: { color: chartTitleColor, fontSize: 14 } },
+            yAxis: {
+                ...commonChartOptions.yAxis,
+                min: 20,
+                max: 120,
+                interval: 20,
+                axisLabel: {
+                    ...commonChartOptions.yAxis.axisLabel,
+                    formatter: '{value}°C'
+                }
+            },
+            series: [{
+                type: 'line',
+                smooth: true,
+                connectNulls: false,
+                symbol: 'circle',
+                symbolSize: 6,
+                data: [],
+                color: '#38bdf8',
+                areaStyle: { opacity: 0.1 },
+                markArea: {
+                    silent: true,
+                    data: TEMP_BANDS.map((band) => [
+                        { yAxis: band.min, itemStyle: { color: band.color } },
+                        { yAxis: band.max }
+                    ])
+                }
+            }]
+        });
+
+        diskChart.setOption({
+            ...commonChartOptions,
+            title: { text: 'Disk I/O (MB/s)', textStyle: { color: chartTitleColor, fontSize: 14 } },
+            yAxis: {
+                type: 'value',
+                min: 0,
+                max: diskAxisMaxLog,
+                interval: 1,
+                axisLabel: {
+                    ...commonChartOptions.yAxis.axisLabel,
+                    formatter: (value) => {
+                        const real = Math.pow(10, value - 1);
+                        if (real < 1) return real.toFixed(1);
+                        if (real < 10) return real.toFixed(0);
+                        if (real < 100) return real.toFixed(0);
+                        return Math.round(real).toString();
+                    }
+                }
+            },
+            series: [{
+                type: 'bar',
+                data: [],
+                barWidth: '100%',
+                itemStyle: { color: '#38bdf8' },
+                markArea: {
+                    silent: true,
+                    data: [
+                        [{ yAxis: 0, itemStyle: { color: DISK_BANDS[0].color } }, { yAxis: 1 }],
+                        [{ yAxis: 1, itemStyle: { color: DISK_BANDS[1].color } }, { yAxis: Math.log10(5) + 1 }],
+                        [{ yAxis: Math.log10(5) + 1, itemStyle: { color: DISK_BANDS[2].color } }, { yAxis: diskAxisMaxLog }]
+                    ]
+                }
+            }]
+        });
+
+        window.addEventListener('resize', () => {
+            tpsChart.resize();
+            fdChart.resize();
+            gpuChart.resize();
+            cpuChart.resize();
+            tempChart.resize();
+            diskChart.resize();
+        });
+
+        function resizeTopCharts() {
+            tpsChart.resize();
+            fdChart.resize();
+            gpuChart.resize();
+            cpuChart.resize();
+            tempChart.resize();
+            diskChart.resize();
+        }
+
+        // Polling
+        let lastProgress = 0;
+        let progressResetSeen = false;
+        let lastRunId = null;
+        let latestState = null;
+        let dbState = null;
+        let dbScope = null;
+        let dbRunInfo = null;
+        let statusLastFetch = 0;
+        let benchmarkEndMs = null;
+        let lastStartTime = null;
+        let lastDatasetKey = null;
+        let datasetPayload = null;
+        let lastTaskPayload = null;
+        let datasetLastFetch = 0;
+        let lastTaskFetch = 0;
+        let liveMetricRequestKey = null;
+        let lastLiveE2ESec = null;
+        let lastLiveEvalSec = null;
+        let lockedTtftMs = null;
+        
+        // New clean architecture: three separate immutable objects
+        let task_current = null;      // Live streaming task (status: PROMPT_SENT | WAITING_FIRST_TOKEN | STREAMING)
+        let task_evaluating = null;   // Request completed, waiting for evaluation result
+        let task_done = null;          // Completed task showing for 3 seconds (immutable)
+        let lastShownDoneTaskId = null; // Track which task was last shown as DONE (persists after task_done cleared)
+        let lastShownDoneSampleId = null; // Sample ID of last shown DONE task
+        
+        // Workflow timer for live pills
+        let workflowTimerInterval = null;
+        let workflowTimerStartTimes = {};
+
+        function deriveWorkflowState() {
+            const state = dbState || latestState || {};
+            const workflow = {
+                cooling: { status: 'pending', live: false, time: null },
+                thinking: { status: 'pending', live: false, time: null },
+                streaming: { status: 'pending', live: false, time: null },
+                evaluating: { status: 'pending', live: false, time: null },
+                done: { status: 'pending', live: false, time: null }
+            };
+
+            const isRunning = ['running', 'initializing'].includes((state.status || '').toLowerCase());
+            const cooldown = state.cooldown || {};
+            if (cooldown && cooldown.active) {
+                workflow.cooling = { status: 'active', live: true, time: null };
+                return workflow;
+            }
+
+            if (task_done) {
+                workflow.thinking.status = 'completed';
+                workflow.streaming.status = 'completed';
+                workflow.evaluating.status = 'completed';
+                workflow.done.status = 'completed';
+                return workflow;
+            }
+
+            if (task_evaluating) {
+                workflow.thinking.status = 'completed';
+                workflow.streaming.status = 'completed';
+                workflow.evaluating = { status: 'active', live: true, time: null };
+                return workflow;
+            }
+
+            if (task_current) {
+                if (task_current.status === 'STREAMING') {
+                    workflow.thinking.status = 'completed';
+                    workflow.streaming = { status: 'active', live: true, time: null };
+                } else {
+                    workflow.thinking = { status: 'active', live: true, time: null };
+                }
+                return workflow;
+            }
+
+            if (!isRunning) {
+                workflow.done.status = 'completed';
+            }
+            return workflow;
+        }
+
+        // Start workflow pill timer update (100ms for live timing)
+        function startWorkflowTimer() {
+            if (workflowTimerInterval) return;
+            workflowTimerInterval = setInterval(() => {
+                const workflow = deriveWorkflowState();
+                const stages = ['cooling', 'thinking', 'streaming', 'evaluating', 'done'];
+
+                stages.forEach(stage => {
+                    const pillData = workflow[stage];
+                    if (!pillData || !pillData.live || pillData.status !== 'active') return;
+
+                    const info = document.getElementById(`pill${stage.charAt(0).toUpperCase() + stage.slice(1)}Info`);
+                    if (!info) return;
+
+                    // Calculate elapsed time
+                    const key = stage;
+                    if (!workflowTimerStartTimes[key]) {
+                        workflowTimerStartTimes[key] = Date.now();
+                    }
+                    const elapsed = (Date.now() - workflowTimerStartTimes[key]) / 1000;
+                    info.textContent = `${Math.max(0, Math.floor(elapsed))}s`;
+                });
+            }, 100);
+        }
+
+        function resetWorkflowTimer() {
+            workflowTimerStartTimes = {};
+        }
+
+        startWorkflowTimer();
+
+        const gpuFallbackData = [];
+        let gpuSource = null;
+        const tempFallbackData = [];
+        const diskFallbackData = [];
+        const fdData = [];
+        let tempChartKind = 'temperature';
+        let allowGpuFallback = false;
+        let allowTempFallback = true;
+        let hasStatus = false;
+
+        function parseUtcTimestamp(value) {
+            if (!value) return null;
+            if (typeof value !== 'string') return null;
+            const hasZone = /[zZ]|[+-]\d{2}:\d{2}$/.test(value);
+            return Date.parse(hasZone ? value : `${value}Z`);
+        }
+
+        function smoothMedian(values, windowSize) {
+            if (windowSize <= 1) return values;
+            const half = Math.floor(windowSize / 2);
+            return values.map((value, idx) => {
+                const start = Math.max(0, idx - half);
+                const end = Math.min(values.length, idx + half + 1);
+                const slice = values.slice(start, end).filter(v => Number.isFinite(v));
+                if (!slice.length) return null;
+                slice.sort((a, b) => a - b);
+                return slice[Math.floor(slice.length / 2)];
+            });
+        }
+
+        function decimateSeries(values, maxPoints = 80) {
+            if (values.length <= maxPoints) return values;
+            const step = Math.ceil(values.length / maxPoints);
+            return values.filter((_, idx) => idx % step === 0);
+        }
+
+        function updateGpuChart(values) {
+            const rounded = values.map(v => (Number.isFinite(v) ? Math.round(v) : null));
+            const gpuData = smoothMedian(rounded, 3);
+            const decimated = decimateSeries(gpuData, 80);
+            const xData = decimated.map((_, idx) => String(idx + 1));
+            gpuChart.setOption({
+                yAxis: { min: 0, max: 100, interval: 25, boundaryGap: [0, 0] },
+                xAxis: { data: xData },
+                series: [{ data: decimated }]
+            });
+        }
+
+        function updateCpuChart(values) {
+            const rounded = values.map(v => (Number.isFinite(v) ? Math.round(v) : null));
+            const cpuData = smoothMedian(rounded, 3);
+            const decimated = decimateSeries(cpuData, 80);
+            const xData = decimated.map((_, idx) => String(idx + 1));
+            cpuChart.setOption({
+                yAxis: { min: 0, max: 100, interval: 20, boundaryGap: [0, 0] },
+                xAxis: { data: xData },
+                series: [{ data: decimated }]
+            });
+        }
+
+        function updateTempChart(values) {
+            const tempData = values.map(v => (Number.isFinite(v) ? Math.round(v) : null));
+            const xData = values.map((_, idx) => String(idx + 1));
+            tempChart.setOption({
+                xAxis: { data: xData },
+                yAxis: { min: 20, max: 120, interval: 20, boundaryGap: [0, 0] },
+                series: [{ data: tempData }]
+            });
+        }
+
+        function updateFdChart(values) {
+            const rounded = values.map(v => (Number.isFinite(v) ? Math.round(v) : null));
+            const smoothed = smoothMedian(rounded, 3);
+            const decimated = decimateSeries(smoothed, 80);
+            const xData = decimated.map((_, idx) => String(idx + 1));
+            const maxVal = Math.max(...values.filter(v => Number.isFinite(v)), 1000);
+            const yMax = Math.max(1000, Math.ceil(maxVal / 200) * 200);
+            fdChart.setOption({
+                yAxis: { min: 0, max: yMax, interval: Math.ceil(yMax / 5), boundaryGap: [0, 0] },
+                xAxis: { data: xData },
+                series: [{ data: decimated }]
+            });
+        }
+
+        function updateDiskChart(values) {
+            const diskRaw = values.map(v => (Number.isFinite(v) ? Math.round(v * 10) / 10 : null));
+            const diskData = diskRaw.map(v => {
+                if (v == null) return null;
+                const clamped = Math.max(v, 0.1);
+                return Math.log10(clamped) + 1;
+            });
+            const maxValue = diskRaw.length ? Math.max(...diskRaw.filter(v => v != null)) : 0;
+            const paddedMax = maxValue > 0 ? maxValue * 1.1 : 10;
+            const targetMaxLog = Math.log10(Math.max(paddedMax, 0.1)) + 1;
+            if (targetMaxLog > diskAxisMaxLog) {
+                diskAxisMaxLog = targetMaxLog;
+            }
+            diskChart.setOption({
+                yAxis: { min: 0, max: diskAxisMaxLog, interval: 1 },
+                series: [{
+                    data: diskData,
+                    markArea: {
+                        silent: true,
+                        data: [
+                            [{ yAxis: 0, itemStyle: { color: DISK_BANDS[0].color } }, { yAxis: 1 }],
+                            [{ yAxis: 1, itemStyle: { color: DISK_BANDS[1].color } }, { yAxis: Math.log10(5) + 1 }],
+                            [{ yAxis: Math.log10(5) + 1, itemStyle: { color: DISK_BANDS[2].color } }, { yAxis: diskAxisMaxLog }]
+                        ]
+                    }
+                }]
+            });
+        }
+
+        function resetCharts() {
+            tempChartKind = null;
+            setTempChartMode('temperature');
+            updateGpuChart([]);
+            updateCpuChart([]);
+            updateTempChart([]);
+            updateDiskChart([]);
+            updateFdChart([]);
+            tpsChart.setOption({ series: [{ data: [] }] });
+            gpuFallbackData.length = 0;
+            diskFallbackData.length = 0;
+            tempFallbackData.length = 0;
+            fdData.length = 0;
+            diskAxisMaxLog = 2;
+            gpuSource = null;
+        }
+
+        function normalizeDatasetLabel(value) {
+            if (!value) return '';
+            const base = String(value).split('/').pop() || '';
+            const trimmed = base.replace(/\.[^/.]+$/, '');
+            return trimmed.replace(/_\\d+$/, '').toLowerCase();
+        }
+
+        function formatMetric(value, digits = 1) {
+            if (value === null || value === undefined || value === '') return '-';
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                return Number.isInteger(value) ? value.toString() : value.toFixed(digits);
+            }
+            return String(value);
+        }
+
+        function buildMetricItem(label, value) {
+            if (value === null || value === undefined || value === '') return null;
+            return { label, value: formatMetric(value) };
+        }
+
+        function renderMetricGrid(el, items) {
+            if (!el) return;
+            el.innerHTML = '';
+            if (!items.length) return;
+            items.forEach((item) => {
+                const card = document.createElement('div');
+                card.className = 'metric-item';
+                const label = document.createElement('div');
+                label.className = 'metric-label';
+                label.textContent = item.label;
+                const value = document.createElement('div');
+                value.className = 'metric-value';
+                value.textContent = item.value;
+                card.append(label, value);
+                el.append(card);
+            });
+        }
+
+        function taskLabel(entry, task, index) {
+            if (!entry || !task) return '-';
+            if (entry.type === 'chat') {
+                const dialog = task.dialog_id || 'dialog';
+                const turn = Number.isFinite(task.turn_index) ? task.turn_index + 1 : index + 1;
+                return `${dialog}:${turn}`;
+            }
+            const sampleId = task.sample_id || `${index + 1}`;
+            const label = String(sampleId);
+            return label.length > 14 ? `${label.slice(0, 12)}...` : label;
+        }
+
+        function renderTaskGrid(entry) {
+            const grid = document.getElementById('taskGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            if (!entry || !entry.tasks || !entry.tasks.length) {
+                grid.textContent = 'No tasks yet.';
+                return;
+            }
+            const state = dbState || latestState || {};
+            const modelRunning = state && (state.status === 'running' || state.status === 'initializing');
+            const currentSampleId = state.current_sample_id;
+            const currentDialogId = state.current_dialog_id;
+            const currentTurnIndex = state.current_turn_index;
+            
+            entry.tasks.forEach((task, idx) => {
+                const pill = document.createElement('div');
+                pill.className = 'task-pill';
+                const rawStatus = String(task.status || 'pending');
+                const normalizedStatus = rawStatus.toLowerCase();
+                
+                // Check if this is the currently running task
+                let isCurrentTask = false;
+                if (modelRunning && normalizedStatus === 'pending') {
+                    if (entry.type === 'chat') {
+                        isCurrentTask = task.dialog_id === currentDialogId && task.turn_index === currentTurnIndex;
+                    } else {
+                        isCurrentTask = task.sample_id === currentSampleId;
+                    }
+                }
+
+                const isLiveStatus = ['running', 'active', 'initializing'].includes(normalizedStatus);
+                const isLiveTask = isCurrentTask || isLiveStatus;
+                pill.dataset.status = isLiveTask ? 'running' : normalizedStatus;
+                const dot = document.createElement('span');
+                dot.className = 'task-dot';
+                const label = document.createElement('span');
+                label.textContent = taskLabel(entry, task, idx);
+                pill.append(dot, label);
+                grid.append(pill);
+            });
+        }
+
+        function resetDatasetDashboard() {
+            datasetPayload = null;
+            lastTaskPayload = null;
+            dbState = null;
+            dbScope = null;
+            dbRunInfo = null;
+            updateDatasetDashboard();
+            updateLastTaskCard();
+            updateLiveKPIs();
+        }
+
+        function updateLiveKPIs() {
+            if (!dbState) return;
+
+            // Debug logging
+
+            // Server Status Card
+            const server = dbState.server || {};
+            document.getElementById('kpiModelName').textContent = server.model_name || '-';
+            document.getElementById('kpiModelStatus').textContent = server.model_status || '-';
+            
+            const gpuTemp = server.gpu_temp?.temperature;
+            if (gpuTemp !== undefined && gpuTemp !== null) {
+                document.getElementById('kpiGpuTemp').textContent = `${gpuTemp.toFixed(1)}°C`;
+            } else {
+                document.getElementById('kpiGpuTemp').textContent = '-';
+            }
+            
+            document.getElementById('kpiThermalStatus').textContent = server.thermal_status || '-';
+            
+            const coolingRowEl = document.getElementById('kpiCoolingRow');
+            const coolingTargetEl = document.getElementById('kpiCoolingTarget');
+            if (coolingRowEl) {
+                if (server.cooling_target !== undefined && server.cooling_target !== null) {
+                    coolingRowEl.style.display = 'flex';
+                    if (coolingTargetEl) {
+                        coolingTargetEl.textContent = `${server.cooling_target.toFixed(1)}°C`;
+                    }
+                } else {
+                    coolingRowEl.style.display = 'none';
+                }
+            }
+
+            // Dashboard Card
+            const dashboard = dbState.dashboard || {};
+            const modelIdx = dashboard.model_index !== undefined ? dashboard.model_index : 0;
+            const modelsTotal = dashboard.models_total || 0;
+            const datasetIdx = dashboard.dataset_index !== undefined ? dashboard.dataset_index : 0;
+            const datasetsTotal = dashboard.datasets_total || 0;
+            
+            
+            const modelProgressEl = document.getElementById('kpiModelProgress');
+            const datasetProgressEl = document.getElementById('kpiDatasetProgress');
+            const taskProgressEl = document.getElementById('kpiTaskProgress');
+            const taskIdx = Number(dbState.task_index || 0);
+            const taskTotal = Number(dbState.tasks_total || 0);
+            
+            if (modelProgressEl) modelProgressEl.textContent = `${modelIdx}/${modelsTotal}`;
+            if (datasetProgressEl) datasetProgressEl.textContent = `${datasetIdx}/${datasetsTotal}`;
+            if (taskProgressEl) taskProgressEl.textContent = taskTotal > 0 ? `${taskIdx}/${taskTotal}` : '-';
+            
+            const quality = dashboard.quality || {};
+            const passedPct = quality.passed_pct ?? quality.correct_pct;
+            if (passedPct !== undefined && passedPct !== null) {
+                document.getElementById('kpiPassedPct').textContent = `${passedPct.toFixed(1)}%`;
+            } else {
+                document.getElementById('kpiPassedPct').textContent = '-%';
+            }
+
+            const falsePct = quality.false_pct ?? quality.failed_pct;
+            if (falsePct !== undefined && falsePct !== null) {
+                document.getElementById('kpiFalsePct').textContent = `${falsePct.toFixed(1)}%`;
+            } else {
+                document.getElementById('kpiFalsePct').textContent = '-%';
+            }
+
+            const othersPct = quality.others_pct;
+            if (othersPct !== undefined && othersPct !== null) {
+                document.getElementById('kpiOthersPct').textContent = `${othersPct.toFixed(1)}%`;
+            } else {
+                document.getElementById('kpiOthersPct').textContent = '-%';
+            }
+
+            document.getElementById('kpiCompletedCount').textContent = quality.completed_count || '-';
+            const counts = dbState.counts || {};
+            const totalTasks = Number(counts.tasks_total || 0);
+            const completedTasks = Number(counts.tasks_completed || quality.completed_count || 0);
+            const remainingTasks = totalTasks > 0 ? Math.max(0, totalTasks - completedTasks) : null;
+            document.getElementById('kpiRemainingTasks').textContent = remainingTasks !== null ? String(remainingTasks) : '-';
+
+            // Task Details Card
+            const task = dbState.task || {};
+            const attempt = Number.isFinite(task.attempt) ? task.attempt : null;
+            const maxRetries = Number.isFinite(task.max_retries) ? task.max_retries : null;
+            document.getElementById('kpiAttempt').textContent = (attempt !== null && maxRetries !== null) ? `${attempt}/${maxRetries}` : '-';
+
+            const status = task.status ? String(task.status).toUpperCase() : '-';
+            document.getElementById('kpiTaskStatus').textContent = status;
+
+            const ttftMs = Number(task.ttft_ms);
+            const taskStatus = String(task.status || '').toLowerCase();
+            const isTimerFinal = !['running', 'active', 'initializing'].includes(taskStatus);
+            if (Number.isFinite(ttftMs)) {
+                const ttftSec = Math.max(0, ttftMs / 1000);
+                document.getElementById('kpiTtft').textContent = isTimerFinal
+                    ? `${ttftSec.toFixed(1)}s`
+                    : `${Math.floor(ttftSec)}s`;
+            } else {
+                document.getElementById('kpiTtft').textContent = '-';
+            }
+
+            const speed = Number(task.tokens_per_sec);
+            document.getElementById('kpiSpeed').textContent = Number.isFinite(speed) ? `${speed.toFixed(1)} tk/sec` : '-';
+
+            const e2eMs = Number(task.e2e_ms);
+            if (Number.isFinite(e2eMs)) {
+                const e2eSec = Math.max(0, e2eMs / 1000);
+                document.getElementById('kpiE2E').textContent = isTimerFinal
+                    ? `${e2eSec.toFixed(1)}s`
+                    : `${Math.floor(e2eSec)}s`;
+            } else {
+                document.getElementById('kpiE2E').textContent = '-';
+            }
+
+            // Workflow Pills
+            updateWorkflowPills();
+
+            // Dataset/Task Pills
+            updateDatasetTaskPills();
+        }
+
+        function updateWorkflowPills() {
+            const workflow = deriveWorkflowState();
+            const stages = ['cooling', 'thinking', 'streaming', 'evaluating', 'done'];
+
+            stages.forEach(stage => {
+                const pillData = workflow[stage];
+                if (!pillData) return;
+
+                const pill = document.getElementById(`pill${stage.charAt(0).toUpperCase() + stage.slice(1)}`);
+                const info = document.getElementById(`pill${stage.charAt(0).toUpperCase() + stage.slice(1)}Info`);
+
+                if (!pill || !info) return;
+
+                // Remove all state classes
+                pill.classList.remove('pending', 'active', 'completed', 'failed', 'retry');
+
+                // Add current state class
+                const status = pillData.status || 'pending';
+                pill.classList.add(status);
+
+                // Reset timer if status changed from active
+                const wasActive = workflowTimerStartTimes[stage] !== undefined;
+                const isActive = pillData.live && status === 'active';
+                if (wasActive && !isActive) {
+                    delete workflowTimerStartTimes[stage];
+                } else if (!wasActive && isActive) {
+                    workflowTimerStartTimes[stage] = Date.now();
+                }
+
+                // Update info text
+                let infoText = '--';
+                if (pillData.time !== undefined && pillData.time !== null) {
+                    infoText = `${Number(pillData.time).toFixed(1)}s`;
+                } else if (pillData.live && status === 'active') {
+                    // Timer will update this in the interval
+                    const elapsed = workflowTimerStartTimes[stage] 
+                        ? (Date.now() - workflowTimerStartTimes[stage]) / 1000 
+                        : 0;
+                    infoText = `${Math.max(0, Math.floor(elapsed))}s`;
+                } else if (status === 'pending') {
+                    infoText = '--';
+                } else if (status === 'completed') {
+                    infoText = '✓';
+                } else if (status === 'failed') {
+                    infoText = '✗';
+                }
+
+                info.textContent = infoText;
+            });
+        }
+
+        function initPillsVisibilityControls() {
+            const STORAGE_KEY = 'benchmark_monitor.pills_visibility';
+            const defaultState = { modelsOverview: true, datasetsOverview: true, currentDatasetTasks: true };
+
+            let state = { ...defaultState };
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    state = {
+                        modelsOverview: parsed.modelsOverview !== false,
+                        datasetsOverview: parsed.datasetsOverview !== false,
+                        currentDatasetTasks: parsed.currentDatasetTasks !== false
+                    };
+                }
+            } catch (e) {
+            }
+
+            const modelsSection = document.getElementById('modelsOverviewSection');
+            const datasetsSection = document.getElementById('datasetsOverviewSection');
+            const tasksSection = document.getElementById('currentDatasetTasksSection');
+            const toggleModelsBtn = document.getElementById('toggleModelsOverview');
+            const toggleDatasetsBtn = document.getElementById('toggleDatasetsOverview');
+            const toggleTasksBtn = document.getElementById('toggleCurrentDatasetTasks');
+
+            function persist() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                } catch (e) {
+                }
+            }
+
+            function apply() {
+                if (modelsSection) modelsSection.classList.toggle('is-hidden', !state.modelsOverview);
+                if (datasetsSection) datasetsSection.classList.toggle('is-hidden', !state.datasetsOverview);
+                if (tasksSection) tasksSection.classList.toggle('is-hidden', !state.currentDatasetTasks);
+
+                if (toggleModelsBtn) {
+                    toggleModelsBtn.classList.toggle('active', state.modelsOverview);
+                    toggleModelsBtn.setAttribute('aria-pressed', state.modelsOverview ? 'true' : 'false');
+                }
+                if (toggleDatasetsBtn) {
+                    toggleDatasetsBtn.classList.toggle('active', state.datasetsOverview);
+                    toggleDatasetsBtn.setAttribute('aria-pressed', state.datasetsOverview ? 'true' : 'false');
+                }
+                if (toggleTasksBtn) {
+                    toggleTasksBtn.classList.toggle('active', state.currentDatasetTasks);
+                    toggleTasksBtn.setAttribute('aria-pressed', state.currentDatasetTasks ? 'true' : 'false');
+                }
+            }
+
+            if (toggleModelsBtn) {
+                toggleModelsBtn.addEventListener('click', () => {
+                    state.modelsOverview = !state.modelsOverview;
+                    apply();
+                    persist();
+                });
+            }
+
+            if (toggleDatasetsBtn) {
+                toggleDatasetsBtn.addEventListener('click', () => {
+                    state.datasetsOverview = !state.datasetsOverview;
+                    apply();
+                    persist();
+                });
+            }
+
+            if (toggleTasksBtn) {
+                toggleTasksBtn.addEventListener('click', () => {
+                    state.currentDatasetTasks = !state.currentDatasetTasks;
+                    apply();
+                    persist();
+                });
+            }
+
+            apply();
+        }
+
+        function initTopCardsVisibilityControls() {
+            const STORAGE_KEY = 'benchmark_monitor.top_cards_visibility';
+            const cards = [
+                { key: 'tps', cardId: 'tpsChart', btnId: 'toggleTopTps' },
+                { key: 'fd', cardId: 'fdChart', btnId: 'toggleTopFd' },
+                { key: 'cpu', cardId: 'cpuChart', btnId: 'toggleTopCpu' },
+                { key: 'disk', cardId: 'diskChart', btnId: 'toggleTopDisk' },
+                { key: 'gpu', cardId: 'gpuChart', btnId: 'toggleTopGpu' },
+                { key: 'temp', cardId: 'tempChart', btnId: 'toggleTopTemp' }
+            ];
+
+            const state = Object.fromEntries(cards.map((c) => [c.key, true]));
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    cards.forEach((c) => {
+                        state[c.key] = parsed[c.key] !== false;
+                    });
+                }
+            } catch (e) {
+            }
+
+            function persist() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                } catch (e) {
+                }
+            }
+
+            function apply() {
+                cards.forEach((c) => {
+                    const el = document.getElementById(c.cardId);
+                    const btn = document.getElementById(c.btnId);
+                    const isVisible = state[c.key] !== false;
+                    if (el) el.classList.toggle('is-hidden', !isVisible);
+                    if (btn) {
+                        btn.classList.toggle('active', isVisible);
+                        btn.setAttribute('aria-pressed', isVisible ? 'true' : 'false');
+                    }
+                });
+                setTimeout(resizeTopCharts, 0);
+            }
+
+            cards.forEach((c) => {
+                const btn = document.getElementById(c.btnId);
+                if (!btn) return;
+                btn.addEventListener('click', () => {
+                    state[c.key] = !state[c.key];
+                    apply();
+                    persist();
+                });
+            });
+
+            apply();
+        }
+
+        function updateDatasetTaskPills() {
+            try {
+                if (!dbState) {
+                    return;
+                }
+
+                // Models Overview Pills
+                const modelsContainer = document.getElementById('modelsOverviewPills');
+                if (!modelsContainer) {
+                    console.error('[updateDatasetTaskPills] Container #modelsOverviewPills not found!');
+                    return;
+                }
+                modelsContainer.innerHTML = '';
+                const state = dbState || latestState || {};
+                const isRunActive = state && (state.status === 'running' || state.status === 'initializing');
+                const currentModel = state.current_model || '';
+                const currentModelIndex = Number(dbState?.dashboard?.model_index || state.model_index || 0) || 0;
+                const scopeModels = Array.isArray(dbScope?.models) ? dbScope.models : [];
+                const models = scopeModels.map((m, idx) => {
+                    if (m && typeof m === 'object') {
+                        return {
+                            name: String(m.name || m.model_name || `model_${idx + 1}`),
+                            index: Number(m.index || (idx + 1))
+                        };
+                    }
+                    return { name: String(m), index: idx + 1 };
+                });
+
+                if (models.length === 0) {
+                    modelsContainer.textContent = 'No models yet.';
+                } else {
+                    models.forEach((model, idx) => {
+                        const pill = document.createElement('div');
+                        pill.className = 'task-pill';
+
+                        const modelIdx = Number(model.index || (idx + 1));
+                        let status = 'pending';
+                        if (isRunActive && currentModel && model.name === currentModel) {
+                            status = 'running';
+                        } else if (currentModelIndex > 0 && modelIdx < currentModelIndex) {
+                            status = 'pass';
+                        } else if (!isRunActive && currentModelIndex > 0 && modelIdx <= currentModelIndex) {
+                            status = 'pass';
+                        }
+                        pill.dataset.status = status;
+                        const icon = document.createElement('span');
+                        icon.className = 'task-dot';
+
+                        const label = document.createElement('span');
+                        label.textContent = model.name;
+
+                        pill.appendChild(icon);
+                        pill.appendChild(label);
+                        modelsContainer.appendChild(pill);
+                    });
+                }
+
+
+                // Datasets Overview Pills
+                const datasetsOverview = dbState.datasets_overview?.datasets || [];
+                const datasetsContainer = document.getElementById('datasetsOverviewPills');
+                if (!datasetsContainer) {
+                    console.error('[updateDatasetTaskPills] Container #datasetsOverviewPills not found!');
+                    return;
+                }
+                datasetsContainer.innerHTML = '';
+
+                datasetsOverview.forEach((dataset, idx) => {
+                    const pill = document.createElement('div');
+                    pill.className = 'task-pill';
+                    const status = dataset.status || 'pending';
+                    if (status === 'completed') pill.dataset.status = 'pass';
+                    else if (status === 'failed') pill.dataset.status = 'fail';
+                    else if (status === 'active') pill.dataset.status = 'running';
+                    else pill.dataset.status = 'pending';
+
+                    const icon = document.createElement('span');
+                    icon.className = 'task-dot';
+
+                    const label = document.createElement('span');
+                    label.textContent = `${dataset.dataset_label} (${dataset.completed}/${dataset.total})`;
+
+                    pill.appendChild(icon);
+                    pill.appendChild(label);
+                    datasetsContainer.appendChild(pill);
+                });
+
+            
+            } catch (error) {
+                console.error('[updateDatasetTaskPills] FATAL ERROR:', error);
+            }
+        }
+
+        function updateDatasetDashboard() {
+            const ragMetricsTTFT = document.getElementById('ragMetricsTTFT');
+            const ragMetricsE2E = document.getElementById('ragMetricsE2E');
+            const ragMetricsE2EWrap = document.getElementById('ragMetricsE2EWrap');
+            const ragMetricsEval = document.getElementById('ragMetricsEval');
+            const ragMetricsEvalWrap = document.getElementById('ragMetricsEvalWrap');
+            const ragMetricsResult = document.getElementById('ragMetricsResult');
+
+            const datasets = datasetPayload?.datasets || [];
+            if (!datasets.length) {
+                if (ragMetricsTTFT) ragMetricsTTFT.textContent = '-- s';
+                if (ragMetricsE2E) ragMetricsE2E.textContent = '-- s';
+                if (ragMetricsEval) ragMetricsEval.textContent = '-- s';
+                if (ragMetricsE2EWrap) ragMetricsE2EWrap.style.display = 'none';
+                if (ragMetricsEvalWrap) ragMetricsEvalWrap.style.display = 'none';
+                if (ragMetricsResult) ragMetricsResult.textContent = '--';
+                renderTaskGrid(null);
+                return;
+            }
+
+            const state = dbState || latestState || {};
+            const currentModel = state.current_model || datasets[0]?.model_name || '-';
+            const modelDatasets = datasets.filter((entry) => entry.model_name === currentModel);
+            const currentDataset = state.current_dataset || state.current_task || '';
+            const currentTask = state.current_task
+                || lastTaskPayload?.task?.task_name
+                || lastTaskPayload?.task?.dataset_label
+                || '';
+            const targetLabel = normalizeDatasetLabel(currentDataset);
+            let datasetEntry = null;
+            if (targetLabel) {
+                datasetEntry = modelDatasets.find((entry) => {
+                    return normalizeDatasetLabel(entry.dataset_label) === targetLabel
+                        || normalizeDatasetLabel(entry.dataset_id) === targetLabel;
+                });
+            }
+            
+            if (!datasetEntry) {
+                renderTaskGrid(null);
+                return;
+            }
+            const modelRunning = state && (state.status === 'running' || state.status === 'initializing');
+            const hasActiveTask = modelRunning && state.current_model === currentModel && currentTask;
+            if (!datasetEntry && hasActiveTask) {
+                datasetEntry = {
+                    type: 'in_progress',
+                    model_name: currentModel,
+                    dataset_id: currentTask,
+                    dataset_label: currentTask,
+                    completed: false,
+                    tasks: [],
+                    tasks_total: Number(state.tasks_total) || 0,
+                    tasks_passed: 0,
+                    tasks_failed: 0
+                };
+            }
+            const datasetsTotal = Number(state.datasets_total) || Number(dbScope?.datasets_total) || modelDatasets.length || datasets.length || 0;
+            const currentDatasetIndex = Number(state.dataset_index) || 0;
+            const datasetsDoneByState = modelRunning && state.current_model === currentModel
+                ? Math.max(currentDatasetIndex - 1, 0)
+                : modelDatasets.filter((entry) => entry.completed).length;
+            const modelDone = datasetsTotal > 0 && datasetsDoneByState >= datasetsTotal;
+
+            const datasetDone = datasetEntry?.completed && (!modelRunning || state.current_model !== currentModel);
+
+            // Model and dataset info is now handled by updateLiveKPIs()
+            // Keep only task metrics and grid rendering here
+            
+            if (datasetEntry) {
+                const done = (datasetEntry.tasks_passed || 0) + (datasetEntry.tasks_failed || 0);
+                const total = Number(datasetEntry.tasks_total) || 0;
+                const passPct = done > 0 ? Math.round((datasetEntry.tasks_passed / done) * 100) : null;
+                const avgTtftMs = datasetEntry.aggregate?.avg_ttft_ms;
+                const avgTtftSec = Number.isFinite(avgTtftMs) ? (avgTtftMs / 1000).toFixed(1) : '--';
+                const avgE2EMs = datasetEntry.aggregate?.avg_total_time_ms;
+                const avgE2ESec = Number.isFinite(avgE2EMs) ? (avgE2EMs / 1000).toFixed(1) : '--';
+                const errors = datasetEntry.tasks_failed || 0;
+                const passText = passPct != null ? `${passPct}%` : '--%';
+                
+                // Check if we should show live metrics instead of aggregates
+                const statusRaw = (state.status || '').toLowerCase();
+                const isRunning = statusRaw === 'running' || statusRaw === 'initializing';
+                const hasCurrentTaskInfo = state.current_model || state.current_sample_id || state.current_dialog_id;
+                const showingRunningTask = isRunning && hasCurrentTaskInfo;
+                
+                let displayTTFT = `${avgTtftSec} s`;
+                let displayE2E = `${avgE2ESec} s`;
+                let displayEval = '-- s';
+                let showE2E = true;
+                let showEval = false;
+                const formatFixedSeconds = (ms, minSec = null) => {
+                    const valueSec = ms / 1000;
+                    const clampedSec = Number.isFinite(minSec) ? Math.max(valueSec, minSec) : valueSec;
+                    return `${clampedSec.toFixed(1)} s`;
+                };
+                
+                // Check last_request for live/completed metrics
+                const recentMetrics = state.recent_metrics || [];
+                const latestMetric = recentMetrics[recentMetrics.length - 1];
+                const req = state.last_request || {};
+                const requestStartMs = parseUtcTimestamp(req.started_at);
+                const requestKey = req.started_at || null;
+                if (requestKey !== liveMetricRequestKey) {
+                    liveMetricRequestKey = requestKey;
+                    lastLiveE2ESec = null;
+                    lastLiveEvalSec = null;
+                    lockedTtftMs = null;
+                }
+                
+                if (showingRunningTask) {
+                    // Override with live metrics from running task
+                    const isRequestActive = req.status === 'running' && requestStartMs;
+                    
+                    if (isRequestActive) {
+                        const elapsedMs = Date.now() - requestStartMs;
+                        const hasValidTTFT = Number.isFinite(latestMetric?.ttft_ms) && latestMetric.ttft_ms <= elapsedMs;
+                        
+                        // Check if we have valid TTFT (not from previous request)
+                        if (hasValidTTFT) {
+                            // First token has arrived - lock TTFT once for this request
+                            if (!Number.isFinite(lockedTtftMs)) {
+                                lockedTtftMs = latestMetric.ttft_ms;
+                            }
+                            displayTTFT = formatFixedSeconds(lockedTtftMs);
+                            // Show live E2E only after TTFT is fixed
+                            const liveE2ESec = Math.max(0, Math.floor(elapsedMs / 1000));
+                            lastLiveE2ESec = liveE2ESec;
+                            displayE2E = `${liveE2ESec} s`;
+                            showE2E = true;
+                            showEval = false;
+                        } else {
+                            // Still waiting for first token - show live counter
+                            displayTTFT = `${Math.max(0, Math.floor(elapsedMs / 1000))} s`;
+                            // Keep E2E hidden until TTFT is finalized
+                            showE2E = false;
+                            showEval = false;
+                        }
+                    }
+                }
+                
+                // Handle completed request (even if not currently showing running task)
+                if (req.status === 'completed' && requestStartMs) {
+                    // Request just completed - show final values
+                    if (Number.isFinite(lockedTtftMs)) {
+                        displayTTFT = formatFixedSeconds(lockedTtftMs);
+                    } else if (Number.isFinite(latestMetric?.ttft_ms)) {
+                        displayTTFT = formatFixedSeconds(latestMetric.ttft_ms);
+                    }
+                    
+                    // E2E: prefer metric, fallback to calculated time
+                    if (Number.isFinite(latestMetric?.total_time_ms)) {
+                        displayE2E = formatFixedSeconds(latestMetric.total_time_ms, lastLiveE2ESec);
+                    } else {
+                        // Calculate E2E from request timestamps
+                        const completedMs = parseUtcTimestamp(req.completed_at) || parseUtcTimestamp(req.ended_at) || Date.now();
+                        const e2eMs = completedMs - requestStartMs;
+                        if (e2eMs > 0) {
+                            displayE2E = formatFixedSeconds(e2eMs, lastLiveE2ESec);
+                        }
+                    }
+                    showE2E = true;
+
+                    // Eval counter: starts when E2E is complete and runs until last_task arrives.
+                    const completedMs = parseUtcTimestamp(req.completed_at) || parseUtcTimestamp(req.ended_at);
+                    if (completedMs) {
+                        const reqSampleId = req.sample_id
+                            || (req.dialog_id ? `${req.dialog_id}:${req.turn_idx || 0}` : null);
+                        const doneTask = normalizeLastTask(lastTaskPayload?.task);
+                        const doneMatchesRequest = !!(
+                            doneTask
+                            && (
+                                (reqSampleId && doneTask.sample_id === reqSampleId)
+                                || (!reqSampleId && (!req.model || doneTask.model === req.model))
+                            )
+                            && (!req.model || doneTask.model === req.model)
+                        );
+
+                        if (doneMatchesRequest) {
+                            const evalDoneMs = parseUtcTimestamp(doneTask.created_at);
+                            if (evalDoneMs && evalDoneMs >= completedMs) {
+                                displayEval = formatFixedSeconds(evalDoneMs - completedMs, lastLiveEvalSec);
+                            } else {
+                                displayEval = formatFixedSeconds(0, lastLiveEvalSec);
+                            }
+                            showEval = true;
+                        } else {
+                            const evalLiveSec = Math.max(0, Math.floor((Date.now() - completedMs) / 1000));
+                            lastLiveEvalSec = evalLiveSec;
+                            displayEval = `${evalLiveSec} s`;
+                            showEval = true;
+                        }
+                    }
+                }
+                
+                // Populate metrics card
+                if (ragMetricsTTFT) ragMetricsTTFT.textContent = displayTTFT;
+                if (ragMetricsE2E) ragMetricsE2E.textContent = displayE2E;
+                if (ragMetricsEval) ragMetricsEval.textContent = displayEval;
+                if (ragMetricsE2EWrap) ragMetricsE2EWrap.style.display = showE2E ? 'inline' : 'none';
+                if (ragMetricsEvalWrap) ragMetricsEvalWrap.style.display = showEval ? 'inline' : 'none';
+                if (ragMetricsResult) ragMetricsResult.textContent = errors > 0 ? `${errors} err` : passText;
+            }
+            renderTaskGrid(datasetEntry);
+            
+            // Update waiting indicator
+            const waitingEl = document.getElementById('waitingIndicator');
+            const cooldown = state.cooldown || {};
+            const req = state.last_request || {};
+            if (cooldown.active) {
+                const reason = cooldown.reason || 'waiting';
+                const seconds = cooldown.seconds || 0;
+                const startedMs = parseUtcTimestamp(cooldown.started_at);
+                const elapsed = startedMs ? (Date.now() - startedMs) / 1000 : 0;
+                const remaining = Math.max(0, seconds - elapsed);
+                waitingEl.innerHTML = `<div class="waiting-indicator"><span class="waiting-reason">${reason}</span> <span class="waiting-detail">~${remaining.toFixed(0)}s remaining</span></div>`;
+                waitingEl.style.display = 'block';
+            } else if (req.status === 'running' && req.kind) {
+                const startedMs = parseUtcTimestamp(req.started_at);
+                const elapsed = startedMs ? Math.max(0, Math.floor((Date.now() - startedMs) / 1000)) : 0;
+                if (req.kind === 'warmup') {
+                    waitingEl.innerHTML = `<div class="waiting-indicator"><span class="waiting-reason">Warming up model</span> <span class="waiting-detail">${elapsed}s elapsed</span></div>`;
+                    waitingEl.style.display = 'block';
+                } else {
+                    waitingEl.style.display = 'none';
+                }
+            } else {
+                waitingEl.style.display = 'none';
+            }
+        }
+
+        // Helper: Format result text from task evaluation
+        function formatResult(task) {
+            if (!task.status || !task.evaluation) {
+                return '';
+            }
+            
+            let resultText = '';
+            const isShortform = task.kind === 'shortform';
+            const isChat = task.kind === 'chat';
+            
+            if (task.status === 'pass') {
+                resultText = '✓ PASS';
+                if (isShortform && task.evaluation.correct !== undefined) {
+                    resultText += task.evaluation.correct ? ' (correct)' : ' (incorrect but passed)';
+                } else if (isChat) {
+                    resultText += ' (compliant)';
+                }
+            } else if (task.status === 'fail') {
+                resultText = '✗ FAIL';
+                if (isChat && task.evaluation.violations?.length > 0) {
+                    resultText += ': ' + task.evaluation.violations.join(', ');
+                }
+            } else if (task.status === 'error') {
+                resultText = '⚠ ERROR';
+                if (task.error) {
+                    resultText += ': ' + task.error;
+                }
+            }
+            
+            return resultText;
+        }
+
+        // Update task_current from state.last_request
+        function updateTaskCurrent(state) {
+            const req = state.last_request;
+            
+            // Filter out failed/completed requests and null requests
+            if (!req || req.status !== 'running' || req.status === 'failed') {
+                if (task_current !== null) {
+                }
+                task_current = null;
+                return;
+            }
+            
+            // Extract sample_id: use sample_id for shortform tasks, dialog_id for chat tasks
+            const sampleId = req.sample_id || req.dialog_id || (req.dialog_id && req.turn_idx !== undefined ? `${req.dialog_id}:${req.turn_idx}` : null);
+            if (!sampleId) {
+                console.warn('[STATE] task_current SKIP - no sample_id or dialog_id', req);
+                task_current = null;
+                return;
+            }
+            
+            const requestStartMs = parseUtcTimestamp(req.started_at);
+            if (!requestStartMs) {
+                task_current = null;
+                return;
+            }
+            
+            const elapsedMs = Date.now() - requestStartMs;
+            const recentMetrics = state.recent_metrics || [];
+            const latestMetric = recentMetrics[recentMetrics.length - 1];
+            const hasValidTTFT = Number.isFinite(latestMetric?.ttft_ms) && latestMetric.ttft_ms <= elapsedMs;
+            const hasResponse = req.response || req.response_preview;
+            
+            let status;
+            if (!hasValidTTFT) {
+                status = 'PROMPT_SENT';
+            } else if (!hasResponse) {
+                status = 'WAITING_FIRST_TOKEN';
+            } else {
+                status = 'STREAMING';
+            }
+            
+            const isNewTask = !task_current || task_current.sample_id !== sampleId;
+            const statusChanged = task_current && task_current.status !== status;
+            const responseChanged = hasResponse && task_current && task_current.response !== (req.response || req.response_preview || '');
+            
+            if (isNewTask) {
+            } else if (statusChanged) {
+            } else if (responseChanged) {
+            }
+            
+            task_current = {
+                model: req.model,
+                task: req.task,
+                sample_id: sampleId,
+                status: status,
+                prompt: req.prompt_preview || req.prompt || '',
+                response: req.response || req.response_preview || '',
+                started_at: requestStartMs,
+                ttft_ms: hasValidTTFT ? latestMetric.ttft_ms : null,
+                tokens_per_sec: latestMetric?.tokens_per_sec || null,
+                trace_id: req.trace_id
+            };
+        }
+
+        // Update task_evaluating from state.last_request
+        function updateTaskEvaluating(state) {
+            const req = state.last_request;
+            
+            // Only show evaluating if request is completed but we don't have task_done yet
+            if (!req || req.status !== 'completed' || task_done) {
+                if (task_evaluating !== null) {
+                }
+                task_evaluating = null;
+                return;
+            }
+            
+            const sampleId = req.sample_id || req.dialog_id;
+            
+            // Don't show evaluating for tasks already shown as DONE
+            if (sampleId && sampleId === lastShownDoneSampleId) {
+                task_evaluating = null;
+                return;
+            }
+            
+            if (!task_evaluating || (sampleId && sampleId !== lastShownDoneSampleId)) {
+            }
+            
+            task_evaluating = {
+                status: 'EVALUATING',
+                prompt: req.prompt_preview || req.prompt || '',
+                response: req.response_preview || req.response || '',
+                started_at: parseUtcTimestamp(req.started_at),
+                sample_id: sampleId,
+                trace_id: req.trace_id
+            };
+        }
+
+        function normalizeLastTask(task) {
+            if (!task) return null;
+            const kind = task.kind || 'shortform';
+            const model = task.model || task.model_name || '';
+            const taskName = task.task || task.task_name || task.dataset_label || task.dataset_id || '';
+            const sampleId = task.sample_id
+                || (task.dialog_id ? `${task.dialog_id}:${task.turn_index || 0}` : '')
+                || taskName;
+            const payload = task.payload || {};
+            const prompt =
+                payload.prompt_preview || payload.prompt ||
+                payload.user_preview || payload.user_text || '';
+            const response =
+                payload.response_preview || payload.response || '';
+            return {
+                kind,
+                model,
+                task_name: taskName,
+                sample_id: sampleId,
+                prompt,
+                response,
+                created_at: task.created_at,
+                evaluation: task.evaluation,
+                error: task.error,
+                status: task.status
+            };
+        }
+
+        // Update task_done from lastTaskPayload
+        function updateTaskDone(lastTaskPayload) {
+            const task = normalizeLastTask(lastTaskPayload?.task);
+            
+            if (!task) {
+                return;
+            }
+            
+            // Check if we've already shown this task as DONE (use sample_id, not timestamp)
+            if (lastShownDoneSampleId === task.sample_id) {
+                return; // Already showed this task
+            }
+            
+            
+            // Create immutable snapshot
+            task_done = {
+                created_at: task.created_at,
+                model: task.model,
+                task_name: task.task_name,
+                sample_id: task.sample_id,
+                status: 'DONE',
+                prompt: task.prompt,
+                response: task.response,
+                result: formatResult(task),
+                evaluation: task.evaluation,
+                completed_at: new Date(task.created_at).getTime(),
+                display_started_at: Date.now()
+            };
+            
+            // Clear evaluating state (transition complete)
+            task_evaluating = null;
+            
+            // Clear current task if it's the same task (allow new task to show immediately)
+            if (task_current && task_current.sample_id === task.sample_id) {
+                task_current = null;
+            }
+            
+            // Mark this task as shown (prevents re-showing after clear)
+            lastShownDoneTaskId = task.created_at;
+            lastShownDoneSampleId = task.sample_id;
+            
+            // Auto-clear after 3 seconds
+            setTimeout(() => {
+                if (task_done && task_done.created_at === task.created_at) {
+                    task_done = null;
+                }
+            }, 3000);
+        }
+
+        // Display functions
+        function showDoneTask(done, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill) {
+            const now = Date.now();
+            const elapsed = now - done.display_started_at;
+            
+            // Status
+            statusEl.textContent = 'DONE';
+            statusEl.style.color = '#10b981'; // green
+            statusEl.style.transition = 'opacity 1s ease-out';
+            
+            // Fade logic
+            if (elapsed < 2000) {
+                statusEl.style.opacity = 1;
+                promptEl.style.opacity = 1;
+                responseEl.style.opacity = 1;
+                resultEl.style.opacity = 1;
+                lastTaskPill.style.opacity = 1;
+            } else {
+                // Fade out during final 1 second
+                const fadeProgress = (elapsed - 2000) / 1000;
+                const opacity = Math.max(0, 1 - fadeProgress);
+                statusEl.style.opacity = opacity;
+                promptEl.style.opacity = opacity;
+                responseEl.style.opacity = opacity;
+                resultEl.style.opacity = opacity;
+                lastTaskPill.style.opacity = opacity;
+            }
+            
+            // Content
+            promptEl.textContent = done.prompt.replace(/\n/g, ' ');
+            responseEl.textContent = done.response;
+            resultEl.textContent = done.result;
+            
+            // Headers
+            const responseHeader = responseSection.querySelector('.task-section-title');
+            responseHeader.textContent = 'Response';
+            
+            // "last task" pill
+            lastTaskPill.style.display = 'inline-block';
+        }
+
+        function showCurrentTask(current, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill) {
+            // Status
+            const statusMap = {
+                'PROMPT_SENT': { text: 'PROMPT SENT', color: '#f59e0b' },
+                'WAITING_FIRST_TOKEN': { text: 'WAITING FOR FIRST TOKEN', color: '#f59e0b' },
+                'STREAMING': { text: 'STREAMING', color: '#3b82f6' }
+            };
+            
+            const statusInfo = statusMap[current.status] || statusMap['PROMPT_SENT'];
+            statusEl.textContent = statusInfo.text;
+            statusEl.style.color = statusInfo.color;
+            statusEl.style.opacity = 1;
+            statusEl.style.transition = '';
+            
+            // Content
+            promptEl.textContent = current.prompt.replace(/\n/g, ' ');
+            promptEl.style.opacity = 1;
+            promptEl.style.transition = '';
+            
+            responseEl.textContent = current.response;
+            responseEl.style.opacity = 1;
+            responseEl.style.transition = '';
+            
+            // LIVE indicator for streaming
+            const responseHeader = responseSection.querySelector('.task-section-title');
+            if (current.status === 'STREAMING') {
+                const charCount = current.response.length;
+                const wordCount = current.response.trim().split(/\s+/).filter(w => w.length > 0).length;
+                responseHeader.innerHTML = 'Response <span style="color: #ef4444; font-weight: 600; animation: pulse 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;">● LIVE</span> <span style="color: #888; font-size: 0.85em; font-weight: 400;">(~' + wordCount + ' words, ' + charCount + ' chars)</span>';
+                
+                // Auto-scroll
+                responseEl.scrollTop = responseEl.scrollHeight;
+            } else {
+                responseHeader.textContent = 'Response';
+            }
+            
+            // Clear result
+            resultEl.textContent = '';
+            resultEl.style.opacity = 1;
+            resultEl.style.transition = '';
+            
+            // Hide pill
+            lastTaskPill.style.display = 'none';
+        }
+
+        function showEvaluating(evaluating, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill) {
+            statusEl.textContent = 'EVALUATING';
+            statusEl.style.color = '#8b5cf6'; // purple
+            statusEl.style.opacity = 1;
+            statusEl.style.transition = '';
+            
+            promptEl.textContent = evaluating.prompt.replace(/\n/g, ' ');
+            promptEl.style.opacity = 1;
+            promptEl.style.transition = '';
+            
+            responseEl.textContent = evaluating.response;
+            responseEl.style.opacity = 1;
+            responseEl.style.transition = '';
+            
+            const responseHeader = responseSection.querySelector('.task-section-title');
+            responseHeader.textContent = 'Response';
+            
+            resultEl.textContent = '';
+            resultEl.style.opacity = 1;
+            resultEl.style.transition = '';
+            
+            lastTaskPill.style.display = 'none';
+        }
+
+        function showWaiting(promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill) {
+            statusEl.textContent = 'WAITING...';
+            statusEl.style.color = mutedTextColor;
+            statusEl.style.opacity = 1;
+            statusEl.style.transition = '';
+            
+            promptEl.textContent = '';
+            promptEl.style.opacity = 1;
+            promptEl.style.transition = '';
+            
+            responseEl.textContent = '';
+            responseEl.style.opacity = 1;
+            responseEl.style.transition = '';
+            
+            const responseHeader = responseSection.querySelector('.task-section-title');
+            responseHeader.textContent = 'Response';
+            
+            resultEl.textContent = '';
+            resultEl.style.opacity = 1;
+            resultEl.style.transition = '';
+            
+            lastTaskPill.style.display = 'none';
+        }
+
+        function showIdle(promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill) {
+            statusEl.textContent = '--';
+            statusEl.style.color = mutedTextColor;
+            statusEl.style.opacity = 1;
+            statusEl.style.transition = '';
+            
+            promptEl.textContent = '';
+            promptEl.style.opacity = 1;
+            promptEl.style.transition = '';
+            
+            responseEl.textContent = '';
+            responseEl.style.opacity = 1;
+            responseEl.style.transition = '';
+            
+            const responseHeader = responseSection.querySelector('.task-section-title');
+            responseHeader.textContent = 'Response';
+            
+            resultEl.textContent = '';
+            resultEl.style.opacity = 1;
+            resultEl.style.transition = '';
+            
+            lastTaskPill.style.display = 'none';
+        }
+
+        function updateLastTaskCard() {
+            const promptEl = document.getElementById('lastTaskPrompt');
+            const responseEl = document.getElementById('lastTaskResponse');
+            const responseSection = document.getElementById('lastTaskResponseSection');
+            const resultEl = document.getElementById('lastTaskResult');
+            const statusEl = document.getElementById('taskStatus');
+            const lastTaskPill = document.getElementById('lastTaskPill');
+            
+            const state = dbState || latestState || {};
+            
+            // Update all three task objects
+            updateTaskCurrent(state);
+            updateTaskEvaluating(state);
+            updateTaskDone(lastTaskPayload);
+            
+            // Display priority logic
+            const now = Date.now();
+            const benchmarkIsRunning = (state.status || '').toLowerCase() === 'running';
+            
+            // Priority 1: Show completed task for 3 seconds
+            if (task_done && (now - task_done.display_started_at) < 3000) {
+                showDoneTask(task_done, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill);
+                return;
+            }
+            
+            // Priority 2: Clear done task after 3 seconds
+            if (task_done && (now - task_done.display_started_at) >= 3000) {
+                task_done = null;
+            }
+            
+            // Priority 3: Show current streaming task
+            if (task_current) {
+                showCurrentTask(task_current, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill);
+                return;
+            }
+            
+            // Priority 4: Show evaluating state
+            if (task_evaluating) {
+                showEvaluating(task_evaluating, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill);
+                return;
+            }
+            
+            // Priority 5: Show waiting (benchmark running, no active task)
+            if (benchmarkIsRunning) {
+                showWaiting(promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill);
+                return;
+            }
+            
+            // Priority 6: Show idle (benchmark not running)
+            showIdle(promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill);
+        }
+
+
+        async function fetchDatasetData(force = false) {
+            const now = Date.now();
+            if (!force && now - datasetLastFetch < 2500) return;
+            datasetLastFetch = now;
+            if (!dbState?.run_id) return;
+            const params = new URLSearchParams();
+            const runId = dbState?.run_id;
+            if (runId) params.set('run_id', runId);
+            if (dbState?.current_model) {
+                params.set('model', dbState?.current_model);
+            }
+            if (dbRunInfo?.started_at || latestState?.start_time) {
+                params.set('since', dbRunInfo?.started_at || latestState?.start_time);
+            }
+            const url = `/api/benchmark/datasets${params.toString() ? `?${params}` : ''}`;
+            try {
+                const resp = await fetch(url, { cache: 'no-store' });
+                const payload = await resp.json();
+                if (!resp.ok || !payload.ok) return;
+                datasetPayload = payload;
+                updateDatasetDashboard();
+            } catch (err) {
+                console.error('fetchDatasetData error:', err);
+            }
+        }
+
+        async function fetchLastTask(force = false) {
+            const now = Date.now();
+            if (!force && now - lastTaskFetch < 2500) return;
+            lastTaskFetch = now;
+            // Allow fetching even without run_id to show most recent historical task
+            const params = new URLSearchParams();
+            const runId = dbState?.run_id;
+            if (runId) params.set('run_id', runId);
+            if (dbRunInfo?.started_at || latestState?.start_time) {
+                params.set('since', dbRunInfo?.started_at || latestState?.start_time);
+            }
+            const url = `/api/benchmark/last_task${params.toString() ? `?${params}` : ''}`;
+            try {
+                const resp = await fetch(url, { cache: 'no-store' });
+                const payload = await resp.json();
+                if (!resp.ok || !payload.ok) return;
+                if (!payload.task) {
+                    // Don't clear lastTaskPayload - keep showing the last known task
+                    // This prevents flickering to old state data
+                    return;
+                }
+                lastTaskPayload = payload;
+                
+                // Log poll result for correlation
+                const task = payload.task;
+                
+                updateLastTaskCard();
+                updateDatasetDashboard();
+            } catch (err) {
+                console.error('fetchLastTask error:', err);
+            }
+        }
+
+        async function fetchRunStatus(force = false) {
+            const now = Date.now();
+            if (!force && now - statusLastFetch < 2500) return;
+            statusLastFetch = now;
+            const url = '/api/benchmark/status';
+            try {
+                const resp = await fetch(url, { cache: 'no-store' });
+                const payload = await resp.json();
+                if (!resp.ok || !payload.ok) return;
+                
+                // Debug logging
+                
+                dbRunInfo = payload.run || null;
+                dbScope = payload.scope || null;
+                dbState = payload.state || {};
+                
+                // Add new Live KPIs sections to dbState (always present, even if no run)
+                dbState.server = payload.server || {};
+                dbState.dashboard = payload.dashboard || {};
+                dbState.task = payload.task || {};
+                dbState.workflow = payload.workflow || {};
+                dbState.datasets_overview = payload.datasets_overview || {};
+                dbState.counts = payload.counts || {};
+                // current_dataset_tasks payload intentionally ignored (legacy UI block removed)
+                
+                hasStatus = true;
+                
+                // Log poll result for correlation
+                if (dbState?.last_request) {
+                }
+                
+                // Update file descriptor count and track over time
+                const fdInfo = payload.file_descriptors || {};
+                if (fdInfo.count >= 0) {
+                    fdData.push(fdInfo.count);
+                    if (fdData.length > 100) fdData.shift();
+                    updateFdChart(fdData);
+                }
+                
+                if (dbState?.run_id && dbState.run_id !== lastRunId) {
+                    lastRunId = dbState.run_id;
+                    lastProgress = 0;
+                    progressResetSeen = false;
+                    lastShownDoneTaskId = null; // Reset on new run
+                    lastShownDoneSampleId = null; // Reset on new run
+                    resetCharts();
+                    resetDatasetDashboard();
+                    fetchDatasetData(true);
+                    fetchLastTask(true);
+                }
+                updateDatasetDashboard();
+                updateLastTaskCard();
+                updateLiveKPIs();
+            } catch (e) {
+                console.error('[fetchRunStatus] ERROR:', e);
+                throw e;
+            }
+        }
+
+        function setTempChartMode(kind) {
+            const nextKind = 'temperature';
+            if (nextKind === tempChartKind) return;
+            tempChartKind = nextKind;
+            tempFallbackData.length = 0;
+            tempChart.setOption({
+                title: { text: 'GPU Temp (°C)' },
+                yAxis: {
+                    type: 'value',
+                    min: 30,
+                    max: 120,
+                    interval: 15,
+                    boundaryGap: [0, 0],
+                    splitLine: { lineStyle: { color: chartSplitColor } },
+                    axisLabel: {
+                        color: chartAxisColor,
+                        showMinLabel: true,
+                        showMaxLabel: true,
+                        margin: 8,
+                        formatter: '{value}°C'
+                    }
+                },
+                series: [{
+                    markArea: {
+                        silent: true,
+                        data: TEMP_BANDS.map((band) => [
+                            { yAxis: band.min, itemStyle: { color: band.color } },
+                            { yAxis: band.max }
+                        ])
+                    }
+                }]
+            });
+        }
+
+        function pushGpuFallback(value) {
+            gpuFallbackData.push(value);
+            if (gpuFallbackData.length > 100) gpuFallbackData.shift();
+            if (gpuSource === 'state') return;
+            gpuSource = 'fallback';
+            updateGpuChart(gpuFallbackData);
+        }
+
+        window.addEventListener('gpu:updated', (event) => {
+            const util = event?.detail?.util;
+            if (!Number.isFinite(util)) return;
+            pushGpuFallback(util);
+        });
+
+        function gpuAuthHeaders() {
+            const shell = window.Shell;
+            if (shell && typeof shell.credHeader === 'function') {
+                try {
+                    return shell.credHeader() || {};
+                } catch {}
+            }
+            return {};
+        }
+
+        async function pollGpuUtilization() {
+            if (!allowGpuFallback || gpuSource === 'state') return;
+            try {
+                const resp = await fetch('/api/gpu', {
+                    headers: gpuAuthHeaders(),
+                    credentials: 'same-origin'
+                });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const util = Number.isFinite(data?.utilization) ? data.utilization : null;
+                if (!Number.isFinite(util)) return;
+                pushGpuFallback(util);
+            } catch {}
+        }
+
+        async function pollServerTemperature() {
+            if (!allowTempFallback) return;
+            try {
+                const resp = await fetch('/api/temperature', {
+                    headers: gpuAuthHeaders(),
+                    credentials: 'same-origin'
+                });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const temp = Number.isFinite(data?.temperature) ? data.temperature : null;
+                setTempChartMode('temperature');
+                if (!Number.isFinite(temp)) return;
+                tempFallbackData.push(temp);
+                if (tempFallbackData.length > 100) tempFallbackData.shift();
+                updateTempChart(tempFallbackData);
+            } catch {}
+        }
+
+        async function updateState() {
+            try {
+                if (!hasStatus || !dbState) {
+                    await fetchRunStatus(true);
+                } else {
+                    await fetchRunStatus(false);
+                }
+                const state = dbState || {};
+                latestState = state;
+                if (!state.run_id) {
+                    return;
+                }
+                const datasetKey = `${state.run_id}:${state.current_model || ''}:${state.current_dataset || state.current_task || ''}`;
+                if (datasetKey && datasetKey !== lastDatasetKey) {
+                    lastDatasetKey = datasetKey;
+                    fetchDatasetData(true);
+                }
+
+                // Update Stats
+                const runId = state.run_id || null;
+                const startTime = state.start_time || null;
+                const startChanged = startTime && startTime !== lastStartTime;
+                if (runId && runId !== lastRunId) {
+                    lastRunId = runId;
+                    lastProgress = 0;
+                    progressResetSeen = false;
+                    resetCharts();
+                    resetDatasetDashboard();
+                }
+                if (startChanged) {
+                    lastStartTime = startTime;
+                    lastProgress = 0;
+                    progressResetSeen = false;
+                    resetCharts();
+                    resetDatasetDashboard();
+                }
+                let progress = parseFloat(state.progress_percent) || 0;
+                if (!progressResetSeen && progress === 0 && lastProgress > 0) {
+                    progressResetSeen = true;
+                    resetCharts();
+                    resetDatasetDashboard();
+                }
+                if (progress < lastProgress) {
+                    progress = lastProgress;
+                } else {
+                    lastProgress = progress;
+                }
+                progress = Math.max(0, Math.min(100, progress));
+                const globalProgressEl = document.getElementById('globalProgress');
+                if (globalProgressEl) globalProgressEl.textContent = progress.toFixed(2) + '%';
+                const progressBarEl = document.getElementById('progressBar');
+                if (progressBarEl) progressBarEl.style.width = progress + '%';
+                const statusRaw = (state.status || '').toLowerCase();
+                const statusEl = document.getElementById('status');
+                const lastMetric = state.recent_metrics && state.recent_metrics.length
+                    ? state.recent_metrics[state.recent_metrics.length - 1].timestamp
+                    : null;
+                const lastUpdate = state.last_update || lastMetric;
+                const lastUpdateMs = parseUtcTimestamp(lastUpdate);
+                const isStale = lastUpdateMs && (Date.now() - lastUpdateMs > 120000);
+                let statusText = statusRaw ? statusRaw.toUpperCase() : 'UNKNOWN';
+                if (isStale && (statusRaw === 'running' || statusRaw === 'initializing')) {
+                    statusText = 'NOT RUNNING';
+                }
+                const statusBase = statusText;
+                if (statusText !== 'UNKNOWN') {
+                    const modeLabel = state.light_mode ? 'LIGHT' : 'NORMAL';
+                    statusText = `${statusText} (${modeLabel})`;
+                }
+                if (statusEl) statusEl.textContent = statusText;
+
+                // Update run description
+                const runDescEl = document.getElementById('runDescription');
+                if (runDescEl && dbScope) {
+                    const modelsCount = dbScope.models_total || (dbScope.models ? dbScope.models.length : 0);
+                    const datasetsCount = dbScope.datasets_total || (dbScope.datasets ? dbScope.datasets.length : 0);
+                    const tasksCount = dbScope.tasks_total || (dbState.counts?.tasks_total || 0);
+                    runDescEl.textContent = `${modelsCount} model${modelsCount !== 1 ? 's' : ''}, ${datasetsCount} dataset${datasetsCount !== 1 ? 's' : ''}, ${tasksCount} task${tasksCount !== 1 ? 's' : ''}`;
+                }
+
+                allowGpuFallback = statusRaw === 'running' || statusRaw === 'initializing';
+                
+                // Color status
+                if (statusEl) {
+                    if (statusBase === 'RUNNING') statusEl.style.color = 'var(--monitor-accent)';
+                    else if (statusBase === 'COMPLETED') statusEl.style.color = 'var(--success)';
+                    else if (statusBase === 'FAILED') statusEl.style.color = '#ef4444';
+                    else if (statusBase === 'NOT RUNNING') statusEl.style.color = '#ef4444';
+                }
+
+
+                const elapsedEl = document.getElementById('elapsedTime');
+                const lastUpdateAgeEl = document.getElementById('lastUpdateAge');
+                const startTimeMs = parseUtcTimestamp(state.start_time);
+                
+                // Determine if benchmark is actively running (not stale)
+                const isActivelyRunning = (statusRaw === 'running' || statusRaw === 'initializing') && !isStale;
+                
+                if (statusRaw === 'completed' || statusRaw === 'failed') {
+                    if (!benchmarkEndMs) {
+                        benchmarkEndMs = lastUpdateMs || Date.now();
+                    }
+                } else {
+                    benchmarkEndMs = null;
+                }
+                
+                if (elapsedEl && startTimeMs) {
+                    // Only update elapsed time if actively running or benchmark ended
+                    const nowMs = benchmarkEndMs || (isActivelyRunning ? Date.now() : lastUpdateMs || Date.now());
+                    const elapsedMs = Math.max(0, nowMs - startTimeMs);
+                    const elapsedSeconds = Math.floor(elapsedMs / 1000);
+                    const hours = Math.floor(elapsedSeconds / 3600);
+                    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+                    const seconds = elapsedSeconds % 60;
+                    const h = String(hours).padStart(2, '0');
+                    const m = String(minutes).padStart(2, '0');
+                    const s = String(seconds).padStart(2, '0');
+                    elapsedEl.textContent = `${h}h${m}m${s}s`;
+                } else if (elapsedEl) {
+                    elapsedEl.textContent = '00h00m00s';
+                }
+                
+                if (lastUpdateAgeEl) {
+                    if (lastUpdateMs) {
+                        // Only use current time if actively running, otherwise use frozen time
+                        const referenceTime = isActivelyRunning ? Date.now() : (benchmarkEndMs || lastUpdateMs);
+                        const ageSeconds = Math.max(0, Math.floor((referenceTime - lastUpdateMs) / 1000));
+                        lastUpdateAgeEl.textContent = String(ageSeconds);
+                    } else {
+                        lastUpdateAgeEl.textContent = '--';
+                    }
+                }
+
+                // Update Charts
+                if (state.recent_metrics && state.recent_metrics.length > 0) {
+                    const tpsValues = state.recent_metrics
+                        .map(m => Number(m.tokens_per_sec))
+                        .filter(v => Number.isFinite(v));
+                    const tpsData = tpsValues.map(value => Math.round(value * 10) / 10);
+
+                    tpsChart.setOption({
+                        yAxis: { min: 0, max: 150, interval: 30, boundaryGap: [0, 0] },
+                        series: [{ data: tpsData }]
+                    });
+                } else if (!allowGpuFallback) {
+                    tpsChart.setOption({ series: [{ data: [] }] });
+                }
+
+                if (state.recent_gpu && state.recent_gpu.length > 0) {
+                    gpuSource = 'state';
+                    const gpuValues = state.recent_gpu
+                        .map(m => Number(m.utilization))
+                        .filter(v => Number.isFinite(v));
+                    if (gpuValues.length > 0) {
+                        updateGpuChart(gpuValues);
+                    }
+                } else if (allowGpuFallback && gpuSource !== 'state' && gpuFallbackData.length > 0) {
+                    gpuSource = 'fallback';
+                    updateGpuChart(gpuFallbackData);
+                } else if (!allowGpuFallback) {
+                    updateGpuChart([]);
+                }
+                if (state.recent_gpu_temp && state.recent_gpu_temp.length > 0) {
+                    const tempValues = state.recent_gpu_temp
+                        .map(m => Number(m.temperature))
+                        .filter(v => Number.isFinite(v));
+                    if (tempValues.length > 0) {
+                        allowTempFallback = false;
+                        setTempChartMode('temperature');
+                        updateTempChart(tempValues);
+                    }
+                } else {
+                    allowTempFallback = true;
+                }
+                if (state.recent_cpu && state.recent_cpu.length > 0) {
+                    const cpuValues = state.recent_cpu
+                        .map(m => Number(m.utilization))
+                        .filter(v => Number.isFinite(v));
+                    if (cpuValues.length > 0) {
+                        updateCpuChart(cpuValues);
+                    }
+                } else if (!allowGpuFallback) {
+                    updateCpuChart([]);
+                }
+                if (state.recent_disk_io && state.recent_disk_io.length > 0) {
+                    const diskValues = state.recent_disk_io
+                        .map(m => Number(m.mbps))
+                        .filter(v => Number.isFinite(v));
+                    if (diskValues.length > 0) {
+                        updateDiskChart(diskValues);
+                    }
+                } else if (allowGpuFallback && diskFallbackData.length > 0) {
+                    updateDiskChart(diskFallbackData);
+                } else if (!allowGpuFallback) {
+                    updateDiskChart([]);
+                }
+                updateDatasetDashboard();
+            } catch (e) {
+            }
+        }
+
+        initPillsVisibilityControls();
+        initTopCardsVisibilityControls();
+
+        (function initChromeToggle() {
+            const STORAGE_KEY = 'benchmark_monitor.chrome_hidden';
+            const root = document.documentElement;
+            const btn = document.getElementById('chromeToggleBtn');
+            if (!btn) return;
+
+            const applyState = (hidden) => {
+                root.classList.toggle('monitor-chrome-hidden', hidden);
+                btn.textContent = hidden ? 'Show header' : 'Hide header';
+                btn.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+                btn.title = hidden ? 'Show docs header/navigation' : 'Hide docs header/navigation';
+            };
+
+            applyState(root.classList.contains('monitor-chrome-hidden'));
+
+            btn.addEventListener('click', () => {
+                const nextHidden = !root.classList.contains('monitor-chrome-hidden');
+                applyState(nextHidden);
+                try {
+                    localStorage.setItem(STORAGE_KEY, nextHidden ? '1' : '0');
+                } catch {}
+            });
+        })();
+
+        setInterval(updateState, 200);  // 200ms for real-time display with fast models like gemma3:4b
+        setInterval(pollGpuUtilization, 5000);
+        setInterval(pollServerTemperature, 10000);
+        setInterval(() => {
+            fetchDatasetData(false);
+            fetchLastTask(false);
+        }, 3000);
+
+        // Initial call
+        updateState();
+        pollGpuUtilization();
+        pollServerTemperature();
+        // Kick off dataset/task fetch after the first status poll sets run_id.
+    </script>
+
+    <footer class="docs-footer">
+        <a href="/docs/benchmark.html" class="docs-footer-prev">← Benchmarks</a>
+        <a href="/docs/benchmark_claude.html" class="docs-footer-next">Benchmark Claude →</a>
+    </footer>
+    </main>
+    <script src="/js/docs_theme.js"></script>
+</body>
+</html>

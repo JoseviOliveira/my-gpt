@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <title>Who Is This For?</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← Back to app</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Index</a>
+      <a href="/docs/user.html">User Guide</a>
+      <a href="/docs/architecture.html">Architecture</a>
+      <a href="/docs/engineering.html">Engineering</a>
+      <a href="/docs/installation.html">Installation</a>
+      <a href="/docs/audience.html" class="active">Audience</a>
+      <a href="/docs/handwrite.html">About</a>
+      <a href="/docs/benchmark.html">Benchmarks</a>
+      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
+
+    </div>
+  </nav>
+
+  <main class="docs-content">
+    <header class="docs-header">
+      <h1>Who Is This For?</h1>
+      <p>Two minimum profiles: building this project from scratch vs installing and running it at home.</p>
+    </header>
+
+    <section class="docs-section">
+      <h2>Part 1 - Why this matters</h2>
+      <p>This project can be approached from two angles, but in practice a third profile shows up once you start refining the product:</p>
+      <ul>
+        <li><strong>Creator profile:</strong> designs and builds the application from scratch (product + infra + local LLM stack), using an advanced LLM as an accelerator.</li>
+        <li><strong>Installer profile:</strong> clones the repository, follows the docs, installs dependencies, and operates the system at home.</li>
+        <li><strong>Maintainer/optimizer profile:</strong> polishes UX, performance, and stability after the app "works" (UI consistency, limits, security, docs, stats, and mobile fixes).</li>
+      </ul>
+      <p>The key idea is simple: an LLM speeds up execution, but it does not replace debugging discipline, operational hygiene, or product decision-making.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Part 2 - Candidate CV (minimum viable): build from scratch</h2>
+      <p>This is the minimum profile realistically able to build and evolve the app (not just run it), with an advanced LLM assisting.</p>
+
+      <ul>
+        <li><strong>Studies (minimum):</strong> technical degree (CS/Telecom/Systems/Math/Physics) or equivalent strong self-taught background.</li>
+        <li><strong>Professional experience (minimum):</strong> 3-5 years of hands-on technical work (software and/or systems), ideally in environments where reliability matters.</li>
+        <li><strong>English:</strong> B2 minimum (C1 recommended) to navigate documentation, issues, and technical sources.</li>
+      </ul>
+
+      <p><strong>Mandatory skills (minimum level):</strong></p>
+      <ul>
+        <li><strong>HTML/CSS (responsive, tokens, dark/light):</strong> Advanced</li>
+        <li><strong>JavaScript (DOM, async, fetch/streams):</strong> Advanced</li>
+        <li><strong>Python backend (Flask or similar):</strong> Medium-Advanced</li>
+        <li><strong>API design (REST + streaming):</strong> Medium</li>
+        <li><strong>Local LLM ops (Ollama, models, allowlists):</strong> Medium</li>
+        <li><strong>Speech pipelines (STT/TTS modes + fallbacks):</strong> Medium</li>
+        <li><strong>Auth + permissions (static files, roles):</strong> Medium-Advanced</li>
+        <li><strong>Performance limits (caps, polling, GPU guard):</strong> Medium</li>
+        <li><strong>OS + shell (macOS/Linux):</strong> Advanced</li>
+        <li><strong>Process control (scripts, launchd):</strong> Medium</li>
+        <li><strong>Reverse proxy basics (Caddy/TLS):</strong> Medium</li>
+        <li><strong>Systematic debugging (logs + browser console):</strong> Advanced</li>
+        <li><strong>Product/UX decision-making:</strong> Advanced</li>
+      </ul>
+
+      <p><strong>Recommended skills (nice-to-have):</strong></p>
+      <ul>
+        <li><strong>Analytics/visualization (charts, tables, filters):</strong> Medium</li>
+        <li><strong>Design system thinking (pills, headers, consistency):</strong> Medium</li>
+        <li><strong>Security hygiene (secrets, exposure, auth):</strong> Medium</li>
+        <li><strong>Benchmarking and perf tests:</strong> Basic-Medium</li>
+        <li><strong>Release hygiene (changelogs, docs updates):</strong> Basic</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Part 3 - Candidate CV (minimum viable): installer/operator</h2>
+      <p>This is the minimum profile realistically able to install the repo, run the system locally, and keep it working at home using the docs and a modern LLM for assistance.</p>
+
+      <ul>
+        <li><strong>Studies:</strong> not strictly required (technical background helps).</li>
+        <li><strong>Professional experience (minimum):</strong> 2-3 years of practical technical exposure (developer junior, IT technician, sysadmin junior, or power user).</li>
+        <li><strong>English:</strong> B1-B2 (reading errors and docs).</li>
+      </ul>
+
+      <p><strong>Mandatory skills (minimum level):</strong></p>
+      <ul>
+        <li><strong>Operating systems (macOS/Linux):</strong> Medium</li>
+        <li><strong>Terminal basics:</strong> Medium</li>
+        <li><strong>Git (clone/pull):</strong> Basic-Medium</li>
+        <li><strong>Dependency installation (brew/venv/pip):</strong> Medium</li>
+        <li><strong>Running scripts (run.sh) and reading logs:</strong> Medium</li>
+        <li><strong>Networking concepts (localhost, IP, ports):</strong> Basic</li>
+        <li><strong>Following technical documentation accurately:</strong> Advanced</li>
+        <li><strong>Using an LLM to debug (sharing logs, asking precise questions):</strong> Medium</li>
+      </ul>
+
+      <p><strong>Recommended skills (nice-to-have):</strong></p>
+      <ul>
+        <li><strong>Basic config editing (.chat_userconf, ports):</strong> Medium</li>
+        <li><strong>Understanding Caddy/HTTPS at a high level:</strong> Basic</li>
+        <li><strong>Security hygiene (do not expose services blindly):</strong> Basic</li>
+        <li><strong>Understanding "services" and start/stop concepts:</strong> Basic</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Part 4 - Skill level matrix (creator vs installer)</h2>
+      <p>The table below summarizes the minimum skill levels required for each profile.</p>
+
+      <div style="width:100%;overflow:auto">
+        <table class="docs-table">
+          <thead>
+            <tr>
+              <th>Skill</th>
+              <th>Build from scratch</th>
+              <th>Install &amp; operate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>macOS/Linux</td><td>Advanced</td><td>Medium</td></tr>
+            <tr><td>Terminal / shell</td><td>Advanced</td><td>Medium</td></tr>
+            <tr><td>HTML/CSS (responsive)</td><td>Advanced</td><td>Basic</td></tr>
+            <tr><td>JavaScript (DOM + async)</td><td>Advanced</td><td>Basic (read-only)</td></tr>
+            <tr><td>Python backend</td><td>Medium-Advanced</td><td>Basic (read-only)</td></tr>
+            <tr><td>LLM operations (Ollama, models)</td><td>Medium</td><td>Basic</td></tr>
+            <tr><td>Speech pipeline (STT/TTS)</td><td>Medium</td><td>Basic</td></tr>
+            <tr><td>Networking (ports, LAN)</td><td>Advanced</td><td>Basic</td></tr>
+            <tr><td>Reverse proxy (Caddy)</td><td>Medium</td><td>Basic</td></tr>
+            <tr><td>Git</td><td>Medium-Advanced</td><td>Basic-Medium</td></tr>
+            <tr><td>Dependency management (venv/brew/pip)</td><td>Medium-Advanced</td><td>Medium</td></tr>
+            <tr><td>Debugging discipline</td><td>Advanced</td><td>Basic-Medium</td></tr>
+            <tr><td>Security basics</td><td>Medium</td><td>Basic</td></tr>
+            <tr><td>Docs discipline (follow steps accurately)</td><td>High</td><td>High</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="docs-note">This project is local-first: reliable operation depends more on system hygiene and debugging than on cloud infrastructure.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Part 5 - Quick self-check</h2>
+      <p>If you are evaluating whether you can install and run this project at home, these questions are a good litmus test:</p>
+      <ol>
+        <li>Can you install dependencies and read terminal errors without panic?</li>
+        <li>Do you understand what <code>localhost</code> and a port are?</li>
+        <li>Can you clone a repo, run <code>./scripts/run.sh</code>, and verify the app is up?</li>
+        <li>Can you pull models with Ollama and recognize a missing-model error?</li>
+        <li>If something fails, can you capture logs and ask a modern LLM with context?</li>
+      </ol>
+      <p>If the answers are mostly yes, the installer profile should work fine.</p>
+    </section>
+
+    <footer class="docs-footer">
+      <a href="/docs/installation.html" class="docs-footer-prev">← Installation</a>
+      <a href="/docs/handwrite.html" class="docs-footer-next">About →</a>
+    </footer>
+  </main>
+  <script src="/js/docs_theme.js"></script>
+</body>
+</html>

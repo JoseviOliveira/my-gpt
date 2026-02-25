@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en" class="docs-page"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap="">
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <title>About This Project</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← Back to app</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Index</a>
+      <a href="/docs/user.html">User Guide</a>
+      <a href="/docs/architecture.html">Architecture</a>
+      <a href="/docs/engineering.html">Engineering</a>
+      <a href="/docs/installation.html">Installation</a>
+      <a href="/docs/audience.html">Audience</a>
+      <a href="/docs/handwrite.html" class="active">About</a>
+      <a href="/docs/handwrite_editor.html">Edit About</a>
+      <a href="/docs/benchmark.html">Benchmarks</a>
+      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
+
+    </div>
+  </nav>
+
+  <main class="docs-content">
+    <header class="docs-header">
+      <h1>About This Project</h1>
+      <p>A few handwritten words from the author.</p>
+    </header>
+
+    <section class="docs-section">
+      <h2>AI-Powered, Human-Designed</h2>
+      <p>This app and all its content are 100% AI-generated with agent workflows.</p>
+      <p>Together, we discussed architecture, tech stacks, programming, and features.
+        Step by step, these agents built the entire application — more than 30,000 lines of code.</p>
+      <p>You're probably wondering: are they actually "smart"? Can they handle complex tasks on their own? Do they need human guidance?
+      I'll share my thoughts at the end of this page, but first, let's start from the beginning.</p>
+      <p>Why did I decide to build my own private GPT assistant? When did I start? How did it go?
+      </p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Why?</h2>
+      <p>
+        Like many of you, I've been using ChatGPT since it launched in 2022, and I've been amazed by what these models can do.
+        I've tried others too—Claude, Gemini, DeepSeek, Mistral—and they're all genuinely impressive.
+      </p>
+      <p>
+        But there's a catch. It's the same issue we've dealt with since the early internet days: when we started using Google's "free" services like Search, Maps, and Gmail,
+        or when we shared our lives and opinions on Instagram, Facebook, and Twitter/X. We eventually realized these powerful, useful tools aren't really free.
+      </p>
+      
+      <p>
+        We've often wondered: how is it possible that they're showing us such specific ads? When did Google find out about this or that topic?
+        Why is this advertisement following us everywhere?
+      </p>
+      <p>
+        Over time, we've learned that every search, every click, every interaction is being tracked, analyzed, and used to build a profile of who we are and what we want.
+        This data gets sold to advertisers and other companies, usually without us truly understanding or agreeing to it.
+      </p>
+
+      <p>
+        The same thing happens with ChatGPT and similar AI models. They seem incredibly smart, and we can use them like a search engine, a tutor, a doctor, or even a friend. These are just a few use cases that I am pretty sure will come into our lives very quickly.
+        <b>We'd love to share anything with them freely... but we hold back</b>.
+      </p>
+
+      <p>Because we remember the golden rule: <i>if a service is free but costs billions to run, your data may be the product</i>.</p>
+      </section>
+
+    <section class="docs-section">
+      <h2>When?</h2>
+      <p>In summer 2025, two major developments occurred:</p>
+      <ol>
+      <li>OpenAI released gpt-oss: "<em>A state-of-the-art open-weight language model that delivers strong real-world performance at low cost</em>" (<a href="https://openai.com/index/introducing-gpt-oss/" target="_blank" aria-label="Introducing gpt-oss">🔗</a>).</li>
+      <li>Major AI companies began introducing "agent" capabilities in their models, advancing beyond basic text generation to enable models to complete complex tasks.</li>
+      </ol>
+
+      <p>This meant we could finally run powerful large language models on our own hardware for free (point 1), without sending data to the cloud,
+      and that building an app from scratch using these agent models could be more straightforward and efficient (point 2).</p>
+
+      <p>That's when I decided to build my own private GPT assistant: running on my own hardware and accessible from my smartphone.</p>
+
+      <p>As an engineer, this project was also a great opportunity to learn and experiment with the latest AI technologies, and to answer questions like:</p>
+      <ul>
+      <li>How does a free GPT like gpt-oss compare to modern cloud GPTs?</li>
+      <li>How difficult is it to build a local GPT assistant right now and use it from a personal phone?</li>
+      <li>Is home hardware sufficient to run all these complex tasks smoothly?</li>
+      </ul>
+
+      <p>I've been programming since childhood, from BASIC as a kid to modern high-level languages, building apps and working with frameworks.
+      Building a complete app from scratch in late 2025 and early 2026, assisted by new AI agent models, was incredibly exciting—and a chance to better understand where we're headed.</p>
+    
+      </section>
+
+    <section class="docs-section">
+      <h2>The Journey</h2>
+      <h3>Getting Started</h3>
+      <p>My first prompt to ChatGPT-5 was simple: "I want to install OpenAI's gpt-oss-20b on my Mac mini M4 Pro and create a minimal web app so I can use it from my iPhone. Doable?"
+        Within a few days, it was running with vanilla HTML/CSS/JavaScript on the frontend and Ollama + Flask (Python) on the backend.</p>
+      <p>I set up a free dynamic DNS for remote access, configured my router to forward traffic to my Mac, and boom—the MVP was live.</p>
+      
+      <h3>Adding Features</h3>
+      <p>After that, I kept adding features I'd always wanted in cloud-based GPTs:</p>
+      <ul>
+        <li>Three levels of answer depth you can switch on the fly</li>
+        <li>Markdown rendering with formatted text, tables, and scientific notation</li>
+        <li>Multi-model support: switch between different GPT models mid-conversation</li>
+        <li>Multi-user support: separate conversations and settings for different users</li>
+        <li>Real-time server load indicators</li>
+        <li>Benchmarking with dedicated KPI monitoring</li>
+        <li>And more</li></ul>
+      
+      <h3>Voice: The Human Touch</h3>
+      <p>
+        But it was still text-only—not exactly how we naturally talk to friends, teachers, or doctors.
+        ChatGPT's real-time voice feature is incredible and keeps getting better.
+        Before seeing what Jony and Sam cook up next (<a href="https://openai.com/sam-and-jony/" target="_blank" aria-label="Sam and Jony">🔗</a>), I wanted to try building voice chat myself using free, local software.
+      </p>
+      <p>First, I used the Web Speech API. After some iterations and bug fixes, I managed to integrate voice input and output in the app.
+        It was not perfect, but it worked quite well for a first version.</p>
+      <p>Then I wanted to go further and use deep learning models for speech-to-text and text-to-speech.
+        After some experiments, I integrated OpenAI's Whisper for speech-to-text and Coqui for text-to-speech.
+        The results were impressive, with a more natural voice and better recognition accuracy, especially for non-English languages.
+        An exception is Windows, where the Web Speech API is still the best option for now.
+     </p>
+     <h3>Reaching limits</h3>
+       <p>
+        But LLMs and high-quality TTS require a lot of power, and this was probably the most interesting part: how far can we go with consumer hardware?
+        I crashed TTS scripts several times while using heavy models, hit timeouts even on simple LLM requests, and learned a lot about CPU, RAM, and GPU bottlenecks.
+        And that's one of the main conclusions, of course.
+        You can do a lot with AI, but this technology is extremely resource-hungry.
+        My Mac mini has a few GPU cores for ML tasks, but even on single-threaded tasks it becomes noisy and hot quite fast.
+       </p>
+       <p><strong>It makes me wonder how powerful modern data centers must be to handle real-time voice ChatGPT for millions of users. Mind-blowing.</strong>
+       </p>
+        </section>
+
+        <section class="docs-section">
+      <h2>Final Thoughts</h2>
+      <p>Time to answer those questions:</p>
+      <ol>
+        <li><strong>Are they really "smart"?</strong> Not yet, but they dramatically speed up development and improve every week.</li>
+        <li><strong>Can they handle complex tasks alone?</strong> Yes—they break problems into steps and adapt when plans change.</li>
+        <li><strong>Do they need human help?</strong> Absolutely. You need to review their work, fix mistakes, and guide them when they're stuck.</li>
+        <li><strong>How good is a free GPT like gpt-oss compared to cloud GPTs?</strong> Good for basic tasks and general conversation, but slower and without real-time information.</li>
+        <li><strong>How hard is it to build a local GPT assistant?</strong> Doable if you have development experience and know your way around troubleshooting and DevOps.</li>
+        <li><strong>Is home hardware enough for smooth performance?</strong> Tuning is crucial, and you'll never match commercial apps.</li>
+      </ol>
+      
+      <h3>Other Takeaways</h3>
+      <p>A few more quick observations:</p>
+      <ol>
+        <li>I could've used languages and frameworks I don't know—the result would be the same.</li>
+        <li>AI agents save hours of tedious work.</li>
+        <li>They can also introduce sneaky bugs, especially in the UI.</li>
+        <li>Their solution to every problem? Write more code. If that doesn't work, write even more. Pro tip: start prompts with "Don't write code yet—just analyze."</li>
+        <li>They're not great at troubleshooting. Adding logging helps, but they don't typically do it on their own.</li>
+        <li>LLMs evolve constantly—sometimes they improve, sometimes they regress and do weird things. When that happens, switch models.</li>
+        <li>LLMs can hallucinate or make silly mistakes. Always verify their output and build solid validation.</li>
+        <li>Given the last two points, <b>version control and backups are critical. Always save your work</b>.</li>
+        <li>For tough problems in growing apps, ask multiple LLMs the same question and compare answers. The "best" LLM changes every month.</li>
+      </ol>
+      
+      <p>After a few months, I'm really happy with how it turned out. The app works well, looks good, and is easy to use.
+      I've learned a ton about what current AI can and can't do.</p>
+      <p><i>And finally, like everyone who works on or follows daily AI improvements, I want to share my thoughts about the future:</i></p>
+      <ul>
+        <li><i>Coding: humans no longer hand-review every line of generated code. Humans define goals, constraints, and direction; LLMs propose solutions and generate code using the highest-probability approach given the prompt and available context. Failures are expected: prompts may be ambiguous, context windows may be incomplete, and generated code may be wrong or unstable. The human responsibility is to understand the technology, diagnose gaps, and iteratively guide the model toward the correct implementation.</i></li>
+        <li><i>Jobs: very soon, we will interact with AI for most day-to-day tasks: by phone, while browsing the web, in education, in healthcare, and more.</i></li>
+        <li><i>A bit later, AI-powered robots will start handling physical tasks around us.</i></li>
+        <li><i>Geopolitics: GPU production control will be a must-have for all advanced countries.</i></li>
+        <li><i>Economy: I have no idea how the economy will look in 50 years. Quite different, I guess.</i></li>
+      </ul>
+      <p>Thanks for reading! If you have questions or feedback, feel free to reach out.</p>
+      <p>You can also write to me in French or Spanish, whichever is easier for you 🙂.</p>
+      <p>2025-26 Josevi Oliveira</p>
+      <p><a href="https://www.linkedin.com/in/josevioliveira">www.linkedin.com/in/josevioliveira</a></p>
+        </section>
+
+    <footer class="docs-footer">
+      <a href="/docs/audience.html" class="docs-footer-prev">← Audience</a>
+      <a href="/docs/benchmark.html" class="docs-footer-next">Benchmarks →</a>
+    </footer>
+   
+  </main>
+  <script src="/js/docs_theme.js"></script>
+
+
+
+
+</body></html>

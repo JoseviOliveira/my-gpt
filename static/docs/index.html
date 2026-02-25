@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <title>Resources</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← Back to app</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html" class="active">Index</a>
+      <a href="/docs/user.html">User Guide</a>
+      <a href="/docs/architecture.html">Architecture</a>
+      <a href="/docs/engineering.html">Engineering</a>
+      <a href="/docs/installation.html">Installation</a>
+      <a href="/docs/audience.html">Audience</a>
+      <a href="/docs/handwrite.html">About</a>
+      <a href="/docs/benchmark.html">Benchmarks</a>
+      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
+    </div>
+  </nav>
+
+  <main class="docs-content" style="max-width:1000px;">
+    <header class="docs-header">
+      <h1>Resources</h1>
+      <p style="color:var(--toggle-ink);font-size:17px;">Everything you need to use and understand your private GPT assistant.</p>
+    </header>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+      
+      <article class="docs-section">
+        <h2>User Guide</h2>
+        <p>Day-to-day workflows: composing prompts, dictating with STT, switching reasoning modes, managing chat history, and reading the GPU KPI.</p>
+        <a href="/docs/user.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open guide →</a>
+      </article>
+
+      <article class="docs-section">
+        <h2>Architecture</h2>
+        <p>How the frontend, Flask backend, neural speech-to-text, and Ollama proxy fit together under the hood.</p>
+        <a href="/docs/architecture.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open guide →</a>
+      </article>
+
+      <article class="docs-section">
+        <h2>Engineering Principles</h2>
+        <p>Design constraints, local-first philosophy, and coding standards that govern the project.</p>
+        <a href="/docs/engineering.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Read principles →</a>
+      </article>
+
+      <article class="docs-section">
+        <h2>Installation</h2>
+        <p>Step-by-step instructions to install dependencies, configure credentials, and run the stack locally.</p>
+        <a href="/docs/installation.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open guide →</a>
+      </article>
+      <article class="docs-section">
+        <h2>Audience</h2>
+        <p>Who this project is for, plus the minimum skills needed to build it or run it at home.</p>
+        <a href="/docs/audience.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open overview →</a>
+      </article>
+
+      <article class="docs-section">
+        <h2>About This Project</h2>
+        <p>The story behind this 100% AI-generated app — who, why, and how it evolved over time.</p>
+        <a href="/docs/handwrite.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Read more →</a>
+      </article>
+    </div>
+
+    <section class="docs-section">
+      <h2>Benchmark Resources</h2>
+      <p>Three complementary views of benchmark performance: Codex report (primary), Claude report (secondary), and live monitor.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;">
+        <article class="docs-section" style="margin:0;">
+          <h2>Benchmark Report by Codex</h2>
+          <p>Primary benchmark report with official model ranking, methodology, and detailed quantitative findings.</p>
+          <a href="/docs/benchmark.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open report →</a>
+        </article>
+
+        <article class="docs-section" style="margin:0;">
+          <h2>Benchmark Report by Claude</h2>
+          <p>Alternative benchmark analysis with a different lens, graph design, and KPI weighting for comparison.</p>
+          <a href="/docs/benchmark_claude.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open report →</a>
+        </article>
+
+        <article class="docs-section" style="margin:0;">
+          <h2>Benchmark Monitor</h2>
+          <p>Live benchmark telemetry: progress by dataset, model status, performance charts, and latest executed task.</p>
+          <a href="/docs/benchmark_monitor.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open monitor →</a>
+        </article>
+      </div>
+    </section>
+
+    <footer class="docs-footer">
+      <a href="/docs/benchmark_claude.html" class="docs-footer-prev">← Benchmark Claude</a>
+      <a href="/docs/user.html" class="docs-footer-next">User Guide →</a>
+    </footer>
+  </main>
+
+  <script>
+    // Highlight active nav (none on index)
+    const path = location.pathname;
+    document.querySelectorAll('.docs-nav-links a').forEach(a => {
+      if (a.getAttribute('href') === path) a.classList.add('active');
+    });
+  </script>
+  <script src="/js/docs_theme.js"></script>
+</body>
+</html>
