@@ -174,7 +174,7 @@
     // Show warning/hint without extra model info to keep it short.
     if (uniqueModels.size > 1 && totalVRAM > SYSTEM_VRAM_GB) {
       const overageGB = (totalVRAM - SYSTEM_VRAM_GB).toFixed(1);
-      modelHintEl.innerHTML = '<span style="color: var(--error-text, #ff6b6b);">⚠️ VRAM ' + totalVRAM.toFixed(1) + 'GB (+' + overageGB + '). Mode switch reloads (15-45s).</span>';
+      modelHintEl.innerHTML = '<span style="color: var(--error-text, #ff6b6b);">⚠️ Memory pressure (+' + overageGB + ' GB). App may run slower</span>';
     } else if (uniqueModels.size > 1) {
       modelHintEl.innerHTML = '<span style="color: var(--toggle-ink, #888);">💡 VRAM ' + totalVRAM.toFixed(1) + 'GB / ' + SYSTEM_VRAM_GB + 'GB (' + uniqueModels.size + ' models).</span>';
     } else {

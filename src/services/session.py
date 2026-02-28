@@ -21,10 +21,8 @@ def _utcnow_iso() -> str:
 def _user_dir(user: str | None, *, create: bool = True) -> pathlib.Path:
     """Return the directory for a user's sessions."""
     username = (user or DEFAULT_USER).strip() or DEFAULT_USER
-    if username == DEFAULT_USER:
-        directory = LOGDIR
-    else:
-        directory = LOGDIR / username
+    # Keep per-user isolation consistent: guest also lives under chats/guest.
+    directory = LOGDIR / username
     if create:
         directory.mkdir(parents=True, exist_ok=True)
     return directory
@@ -38,9 +36,6 @@ def session_path(sid: str, user: str | None = None, *, ensure_dir: bool = True) 
 
 def locate_existing_session(sid: str) -> pathlib.Path | None:
     """Search all known user directories for a session file."""
-    direct = LOGDIR / f"{sid}.json"
-    if direct.exists():
-        return direct
     for entry in LOGDIR.iterdir():
         if entry.is_dir():
             candidate = entry / f"{sid}.json"

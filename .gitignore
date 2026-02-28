@@ -52,3 +52,6 @@ db/*
 !db/benchmark.db
 !db/analytics.db
 *.tar.gz
+
+# Local marketing drafts/plans
+MARKETING*.md

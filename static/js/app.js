@@ -104,6 +104,22 @@ const closeSideBtn = document.getElementById('closeSidebar');
 // Runtime config (e.g., STT mode) fetched once and shared across modules
 const APP_CONFIG_URL = '/config';
 window.APP_CONFIG = window.APP_CONFIG || {};
+const enforceGuestSpeechModes = () => {
+  try {
+    if (window.STT && typeof window.STT.setMode === 'function') {
+      window.STT.setMode('browser', { persist: true });
+    } else {
+      window.localStorage?.setItem?.('sttMode', 'browser');
+    }
+  } catch {}
+  try {
+    if (window.TTS && typeof window.TTS.setMode === 'function') {
+      window.TTS.setMode('browser', { persist: true });
+    } else {
+      window.localStorage?.setItem?.('ttsMode', 'browser');
+    }
+  } catch {}
+};
 const setServerModeStatus = (value) => {
   if (!serverModeRow) return;
   serverModeRow.dataset.eco = value ? 'true' : 'false';
@@ -127,6 +143,7 @@ const fetchAppConfig = async () => {
       window.dispatchEvent(new CustomEvent('role:ready', { detail: { admin: window.IS_ADMIN } }));
     } catch {}
     if (window.IS_GUEST) {
+      enforceGuestSpeechModes();
       sttModeButtons.forEach((btn) => {
         btn.disabled = true;
         btn.setAttribute('aria-disabled', 'true');
