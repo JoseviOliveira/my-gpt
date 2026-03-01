@@ -17,7 +17,7 @@ html.docs-page body {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: 10000;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -25,6 +25,7 @@ html.docs-page body {
   background: var(--panel);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  isolation: isolate;
 }
 
 .docs-nav::after {
@@ -64,17 +65,28 @@ html.docs-page body {
   gap: 6px;
   flex: 1;
   justify-content: center;
+  align-items: center;
 }
 
-.docs-nav-links a {
+.docs-nav-links a,
+.docs-nav-summary {
+  min-height: 30px;
   padding: 5px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.docs-nav-links a {
   color: var(--muted);
   text-decoration: none;
   transition: background .2s ease, color .2s ease;
-  white-space: nowrap;
 }
 
 .docs-nav-links a:hover {
@@ -95,10 +107,12 @@ html.docs-page body {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1;
   color: var(--accent-ink);
   background: var(--accent);
   text-decoration: none;
   flex-shrink: 0;
+  align-self: center;
   transition: opacity .2s ease;
 }
 
@@ -195,6 +209,8 @@ html.docs-page body {
   background: var(--code-bg);
   border: 1px solid var(--code-border);
   font-size: 0.9em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .docs-section pre {
@@ -441,13 +457,151 @@ html.docs-page body {
   color: var(--toggle-ink);
 }
 
+.docs-orientation-toast {
+  position: fixed;
+  top: 114px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  z-index: 11000;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  color: var(--ink);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+
+.docs-orientation-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.docs-orientation-toast.hide {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-8px);
+}
+
+.docs-orientation-toast svg {
+  width: 126px;
+  height: 126px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.docs-orientation-toast-text {
+  max-width: 260px;
+}
+
+/* ============================================================
+   NAV GROUPS — dropdown menus in the docs nav bar
+   ============================================================ */
+
+.docs-nav-group {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.docs-nav-summary {
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease;
+  gap: 3px;
+  font-family: inherit;
+}
+
+.docs-nav-summary::after {
+  content: '▾';
+  font-size: 9px;
+  opacity: 0.6;
+  margin-top: 1px;
+}
+
+.docs-nav-summary:hover {
+  background: var(--item-hover);
+  color: var(--ink);
+}
+
+.docs-nav-group.active-group > .docs-nav-summary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.docs-nav-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 5px;
+  min-width: 118px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  z-index: 200;
+}
+
+[data-theme="dark"] .docs-nav-dropdown {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Desktop (mouse): CSS-driven hover/focus */
+@media (hover: hover) and (pointer: fine) {
+  .docs-nav-group:hover .docs-nav-dropdown,
+  .docs-nav-group:focus-within .docs-nav-dropdown {
+    display: flex;
+  }
+}
+
+/* Touch/JS-driven: only .open class shows the dropdown */
+.docs-nav-group.open .docs-nav-dropdown {
+  display: flex;
+}
+
+.docs-nav-dropdown a {
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--toggle-ink);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+
+.docs-nav-dropdown a:hover {
+  background: var(--item-hover);
+  color: var(--ink);
+}
+
+.docs-nav-dropdown a.active {
+  background: rgba(14, 165, 233, 0.1);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* Mobile adjustments */
 @media (max-width: 640px) {
   .docs-nav {
     flex-wrap: wrap;
     gap: 8px;
   }
-  
+
   .docs-nav-links {
     order: 3;
     width: 100%;
@@ -455,22 +609,53 @@ html.docs-page body {
     overflow-x: auto;
     flex-wrap: nowrap;
     padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
   }
-  
+
   .docs-nav-back {
     margin-left: auto;
   }
-  
+
+  /* Overflow must be visible while a dropdown is open so the
+     absolutely-positioned panel isn't clipped by the scroll container */
+  .docs-nav-links.has-open-dropdown {
+    overflow: visible;
+    -webkit-overflow-scrolling: auto;
+  }
+
+  .docs-nav-dropdown {
+    /* on small screens, pin to left edge of viewport instead of centering */
+    left: auto;
+    right: auto;
+    transform: none;
+  }
+
   .docs-footer {
     flex-direction: column;
   }
-  
+
   .docs-footer a {
     width: 100%;
     justify-content: center;
   }
-  
+
   .docs-footer-next {
     margin-left: 0;
+  }
+
+  .docs-chart-row {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  .docs-chart-label {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .docs-chart-value {
+    width: auto;
+    min-width: 0;
   }
 }

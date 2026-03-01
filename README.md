@@ -75,7 +75,7 @@ Canonical benchmark config:
 
 Outputs:
 
-- Report: `static/docs/benchmark.html`
+- Report: `static/docs/benchmark_guided.html`
 - Live monitor: `http://127.0.0.1:4200/static/docs/benchmark_monitor.html`
 
 ## Data files shared in repo

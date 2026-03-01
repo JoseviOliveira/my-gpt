@@ -61,7 +61,7 @@
 ## 3. Monitor
 
 - Live monitor page: `static/docs/benchmark_monitor.html`
-- Main benchmark report page: `static/docs/benchmark.html`
+- Main benchmark report page: `static/docs/benchmark_guided.html`
 - API endpoints used by monitor:
   - `/api/benchmark/status`
   - `/api/benchmark/datasets`

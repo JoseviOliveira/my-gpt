@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <title>Live Benchmark Monitor</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← App</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Home</a>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Learn</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/user.html">User Guide</a>
+          <a href="/docs/installation.html">Installation</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Project</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/handwrite.html">About</a>
+          <a href="/docs/audience.html">Who Is This For</a>
+          <a href="/docs/engineering.html">Engineering</a>
+          <a href="/docs/architecture.html">Architecture</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Perf</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/benchmark_monitor_guide.html">Live Monitor</a>
+          <a href="/docs/benchmark_guided.html">Benchmark (Guided)</a>
+          <a href="/docs/benchmark_autonomous_claude.html">Benchmark (Claude)</a>
+          <a href="/docs/dashboard.html">Analytics</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="docs-content">
+    <header class="docs-header">
+      <h1>Live Benchmark Monitor</h1>
+      <p>Real-time observability while a benchmark run executes: system telemetry, task progression, per-task streaming details, and live pass/fail accounting.</p>
+      <a href="/docs/benchmark_monitor.html" target="_blank" style="margin-top:8px;align-self:flex-start;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;background:var(--accent);color:var(--accent-ink);text-decoration:none;font-weight:600;font-size:14px;transition:opacity .2s;">Open Live Monitor ↗</a>
+    </header>
+
+    <section class="docs-section">
+      <h2>What It Is</h2>
+      <p>The live monitor is a standalone dashboard that connects to the benchmark runner's SSE telemetry endpoint (<code>/api/benchmark/telemetry/stream</code>) and updates in real time. It is useful when a <code>run_benchmark.py</code> session is active — outside of that context it waits silently for events.</p>
+      <p>It complements the static benchmark reports (Guided, Claude) by showing the <em>execution</em> side: is the server keeping up? Is the GPU thermally stable? Which tasks just passed or failed?</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Access</h2>
+      <ul>
+        <li><strong>Route:</strong> <code>/docs/benchmark_monitor.html</code> — publicly accessible, no login required.</li>
+        <li><strong>Data feed:</strong> connects automatically to the benchmark telemetry SSE endpoint. If no run is active the page shows a waiting indicator.</li>
+        <li><strong>Chrome toggle:</strong> the "Hide header" button collapses the nav bar so charts have maximum vertical space. The state persists in <code>localStorage</code>.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Realtime Telemetry</h2>
+      <p>Six auto-refreshing ECharts time-series, each toggleable via the buttons above the grid. Each chart scrolls a 60-sample window.</p>
+      <ul>
+        <li><strong>TPS (tokens/s):</strong> inference throughput of the model currently streaming. The primary performance signal during a run.</li>
+        <li><strong>FD (file descriptors):</strong> open FD count on the Flask process. A steady climb can indicate a resource leak.</li>
+        <li><strong>CPU (%):</strong> host CPU load. Color bands: green &lt; 20 %, blue 20–50 %, yellow 50–70 %, red &gt; 70 %.</li>
+        <li><strong>Disk (MB/s):</strong> aggregate disk I/O. Spikes often coincide with model loading or log writes.</li>
+        <li><strong>GPU (%):</strong> GPU utilization. Stays high during active inference, drops to near-zero during the cooling gap between tasks.</li>
+        <li><strong>Temp (°C):</strong> GPU die temperature. Bands: blue &lt; 50 °C → green → yellow → orange → red &gt; 95 °C.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Task Lists</h2>
+      <p>Three pill grids updated live as tasks complete. Each grid can be hidden via the toggle buttons at the top of the section.</p>
+      <ul>
+        <li><strong>Models:</strong> one pill per model in the run. Shows its ordinal (e.g., 2/5) and current status.</li>
+        <li><strong>Datasets Overview:</strong> one pill per dataset. Turns green when all tasks in that dataset are done.</li>
+        <li><strong>Current Dataset Tasks:</strong> one pill per task in the active dataset. Colored by state: grey = pending, amber = running, green = pass, red = fail/error.</li>
+      </ul>
+      <p>A pulsing amber halo on a running task dot indicates the active LLM call. It disappears as soon as the result is evaluated.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Dashboard Panel</h2>
+      <p>Three KPI cards that summarize the current moment without needing to read the charts.</p>
+      <ul>
+        <li><strong>Server Status:</strong> active model name, Ollama connection state, current GPU temperature, and thermal classification (cool / warm / hot).</li>
+        <li><strong>Progress Snapshot:</strong> how far into the model/dataset/task matrix the run is, plus live OK %, KO %, and OTHER % and remaining task count.</li>
+        <li><strong>Task Details:</strong> attempt number, task status label, TTFT (time to first token), streaming speed, and end-to-end latency of the current or last completed task.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Streaming Details</h2>
+      <p>The bottom card shows the full drill-down for the task currently executing (or the last one that ran, labelled "last task").</p>
+      <h3>Workflow Progress pills</h3>
+      <p>Five sequential stages, each showing elapsed time once passed:</p>
+      <ul>
+        <li><strong>Cooling:</strong> mandatory inter-task pause so the GPU can recover before the next call. Duration is configurable in <code>config.yaml</code>.</li>
+        <li><strong>Thinking:</strong> the model is generating but hidden reasoning tokens (<code>&lt;think&gt;…&lt;/think&gt;</code>) are still being produced. No visible output yet.</li>
+        <li><strong>Streaming:</strong> visible tokens are flowing. TTFT is captured at the start of this stage.</li>
+        <li><strong>Evaluating:</strong> the completed response is being scored by the evaluator (exact match, extractive QA, code execution, etc.).</li>
+        <li><strong>Done:</strong> result written to DB. Final PASS / FAIL / ERROR determined.</li>
+      </ul>
+      <h3>Text panels</h3>
+      <ul>
+        <li><strong>Status:</strong> current workflow stage in uppercase.</li>
+        <li><strong>Prompt:</strong> the exact prompt sent to the model, including any injected system context.</li>
+        <li><strong>Response:</strong> the raw model output as it arrives, updated token-by-token during streaming.</li>
+        <li><strong>Result:</strong> the evaluator verdict and any scoring detail (expected vs. actual, score threshold, etc.).</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>When No Run Is Active</h2>
+      <p>All panels show dashes or empty grids. A yellow waiting-indicator banner appears: <em>"Waiting for benchmark events…"</em>. The SSE connection retries automatically. As soon as <code>run_benchmark.py</code> starts publishing events the monitor fills in live without any page reload.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li><strong>Charts never render:</strong> ECharts JS assets missing from <code>/js/</code> — re-run <code>scripts/init.sh</code>.</li>
+        <li><strong>Waiting indicator stuck:</strong> confirm the benchmark runner is active and the Flask server is reachable. Check <code>log/server.out.log</code> for SSE errors.</li>
+        <li><strong>GPU chart flat at 0:</strong> the <code>app_gpu.js</code> poller may not have permission to read GPU metrics on this machine. CPU and temperature charts should still work.</li>
+        <li><strong>Task pills not updating:</strong> the SSE stream may have dropped. Reload the page — the monitor reconnects and replays the current run state.</li>
+      </ul>
+    </section>
+
+    <footer class="docs-footer">
+      <a href="/docs/benchmark_autonomous_claude.html" class="docs-footer-prev">← Benchmark (Claude)</a>
+      <a href="/docs/dashboard.html" class="docs-footer-next">Analytics →</a>
+    </footer>
+  </main>
+  <script src="/js/docs_theme.js"></script>
+</body>
+</html>

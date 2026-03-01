@@ -28,18 +28,34 @@
 </head>
 <body>
   <nav class="docs-nav">
-    <a href="/" class="docs-nav-back">← Back to app</a>
+    <a href="/" class="docs-nav-back">← App</a>
     <div class="docs-nav-links">
-      <a href="/docs/index.html">Index</a>
-      <a href="/docs/user.html">User Guide</a>
-      <a href="/docs/architecture.html">Architecture</a>
-      <a href="/docs/engineering.html">Engineering</a>
-      <a href="/docs/installation.html" class="active">Installation</a>
-      <a href="/docs/audience.html">Audience</a>
-      <a href="/docs/handwrite.html">About</a>
-      <a href="/docs/benchmark.html">Benchmarks</a>
-      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
-
+      <a href="/docs/index.html">Home</a>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Learn</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/user.html">User Guide</a>
+          <a href="/docs/installation.html">Installation</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Project</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/handwrite.html">About</a>
+          <a href="/docs/audience.html">Who Is This For</a>
+          <a href="/docs/engineering.html">Engineering</a>
+          <a href="/docs/architecture.html">Architecture</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Perf</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/benchmark_monitor_guide.html">Live Monitor</a>
+          <a href="/docs/benchmark_guided.html">Benchmark (Guided)</a>
+          <a href="/docs/benchmark_autonomous_claude.html">Benchmark (Claude)</a>
+          <a href="/docs/dashboard.html">Analytics</a>
+        </div>
+      </div>
     </div>
   </nav>
 

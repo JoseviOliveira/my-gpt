@@ -28,18 +28,34 @@
 </head>
 <body>
   <nav class="docs-nav">
-    <a href="/" class="docs-nav-back">← Back to app</a>
+    <a href="/" class="docs-nav-back">← App</a>
     <div class="docs-nav-links">
-      <a href="/docs/index.html">Index</a>
-      <a href="/docs/user.html" class="active">User Guide</a>
-      <a href="/docs/architecture.html">Architecture</a>
-      <a href="/docs/engineering.html">Engineering</a>
-      <a href="/docs/installation.html">Installation</a>
-      <a href="/docs/audience.html">Audience</a>
-      <a href="/docs/handwrite.html">About</a>
-      <a href="/docs/benchmark.html">Benchmarks</a>
-      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
-
+      <a href="/docs/index.html">Home</a>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Learn</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/user.html">User Guide</a>
+          <a href="/docs/installation.html">Installation</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Project</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/handwrite.html">About</a>
+          <a href="/docs/audience.html">Who Is This For</a>
+          <a href="/docs/engineering.html">Engineering</a>
+          <a href="/docs/architecture.html">Architecture</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Perf</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/benchmark_monitor_guide.html">Live Monitor</a>
+          <a href="/docs/benchmark_guided.html">Benchmark (Guided)</a>
+          <a href="/docs/benchmark_autonomous_claude.html">Benchmark (Claude)</a>
+          <a href="/docs/dashboard.html">Analytics</a>
+        </div>
+      </div>
     </div>
   </nav>
 
@@ -87,14 +103,14 @@
       <h2>Benchmark Workflow</h2>
       <p>Use benchmark pages as a three-step flow: baseline report, alternative interpretation, then live monitor when a run is active.</p>
       <ol>
-        <li><strong>Read the primary report:</strong> Open <code>/docs/benchmark.html</code> for the canonical benchmark summary and model ranking.</li>
-        <li><strong>Compare with alternative analysis:</strong> Open <code>/docs/benchmark_claude.html</code> to cross-check conclusions using a different KPI weighting and chart style.</li>
+        <li><strong>Read the primary report:</strong> Open <code>/docs/benchmark_guided.html</code> for the canonical benchmark summary and model ranking.</li>
+        <li><strong>Compare with alternative analysis:</strong> Open <code>/docs/benchmark_autonomous_claude.html</code> to cross-check conclusions using a different KPI weighting and chart style.</li>
         <li><strong>Track an active run live:</strong> Open <code>/docs/benchmark_monitor.html</code> for real-time progress, telemetry, and the latest executed task.</li>
       </ol>
       <p><strong>When to use which page:</strong></p>
       <ul>
-        <li><strong>Need final decisions:</strong> Start with <code>benchmark.html</code>.</li>
-        <li><strong>Need another lens:</strong> Compare with <code>benchmark_claude.html</code>.</li>
+        <li><strong>Need final decisions:</strong> Start with <code>benchmark_guided.html</code>.</li>
+        <li><strong>Need another lens:</strong> Compare with <code>benchmark_autonomous_claude.html</code>.</li>
         <li><strong>Need operational visibility:</strong> Use <code>benchmark_monitor.html</code> during execution.</li>
       </ul>
     </section>
@@ -190,6 +206,7 @@
       <ul>
         <li><strong>Debug panel:</strong> Toggle in Settings -> Account &amp; tools -> Debug.</li>
         <li><strong>Dashboard:</strong> Open <code>/dashboard</code> from Settings -> Account &amp; tools -> Dashboard (requires admin access).</li>
+        <li><strong>Dashboard docs:</strong> Open <code>/docs/dashboard.html</code> for panel-by-panel explanations and filter workflow.</li>
         <li><strong>Logs:</strong> The debug panel mirrors console output for troubleshooting.</li>
       </ul>
     </section>

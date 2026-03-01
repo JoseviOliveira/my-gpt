@@ -169,7 +169,7 @@ if [ $EXIT_CODE -eq 0 ]; then
     echo -e "${GREEN}========================================${NC}"
     echo ""
     echo "View results at:"
-    echo "  http://127.0.0.1:4200/static/docs/benchmark.html"
+    echo "  http://127.0.0.1:4200/static/docs/benchmark_guided.html"
     echo ""
     echo "Log saved to: $LOG_FILE"
     echo ""

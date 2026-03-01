@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch { theme = 'light'; }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <title>Analytics Dashboard</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← App</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Home</a>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Learn</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/user.html">User Guide</a>
+          <a href="/docs/installation.html">Installation</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Project</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/handwrite.html">About</a>
+          <a href="/docs/audience.html">Who Is This For</a>
+          <a href="/docs/engineering.html">Engineering</a>
+          <a href="/docs/architecture.html">Architecture</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Perf</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/benchmark_monitor_guide.html">Live Monitor</a>
+          <a href="/docs/benchmark_guided.html">Benchmark (Guided)</a>
+          <a href="/docs/benchmark_autonomous_claude.html">Benchmark (Claude)</a>
+          <a href="/docs/dashboard.html">Analytics</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="docs-content">
+    <header class="docs-header">
+      <h1>Analytics Dashboard</h1>
+      <p>Admin-only usage telemetry. Monitor who uses the app, from where, which endpoints they hit, and what happened recently.</p>
+      <a href="/dashboard" target="_blank" style="margin-top:8px;align-self:flex-start;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;background:var(--accent);color:var(--accent-ink);text-decoration:none;font-weight:600;font-size:14px;transition:opacity .2s;">Open Dashboard ↗</a>
+    </header>
+
+    <section class="docs-section">
+      <h2>Access</h2>
+      <ul>
+        <li><strong>Route:</strong> <code>/dashboard</code> — admin users only. Non-admin sessions receive <code>403 Forbidden</code>.</li>
+        <li><strong>From the app:</strong> Settings → Account &amp; tools → Dashboard.</li>
+        <li><strong>Data source:</strong> reads from <code>/api/dashboard/analytics/summary</code>, which queries the local SQLite analytics DB.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Top Controls</h2>
+      <ul>
+        <li><strong>Hide local IPs:</strong> removes RFC-1918 / loopback traffic from all charts and tables — useful when testing locally.</li>
+        <li><strong>Show last N:</strong> limits how many recent events are loaded into the page (default 500). Raise it to inspect older activity.</li>
+        <li><strong>Refresh:</strong> fetches a fresh snapshot from the server. All widgets update together.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>What Each Panel Shows</h2>
+      <ul>
+        <li><strong>KPI row:</strong> three headline numbers — unique users, unique IPs, and users active in the last 10 minutes.</li>
+        <li><strong>World map:</strong> choropleth of request volume by country. Click a country to filter the entire page.</li>
+        <li><strong>Country table:</strong> ranked list of countries with request counts. Synced with the map filter.</li>
+        <li><strong>Recent scatter:</strong> recency-vs-concentration view showing where activity clusters in time.</li>
+        <li><strong>Users chart:</strong> stacked or grouped bar chart of traffic by user account across the selected time window.</li>
+        <li><strong>API groups:</strong> breakdown of endpoint families (chat, audio, admin, etc.) with a drill-down into individual paths.</li>
+        <li><strong>Detail table:</strong> full event log — timestamp, username, method, path, IP, country, group/subgroup, and user agent.</li>
+      </ul>
+    </section>
+
+    <section class="docs-section">
+      <h2>Filtering Workflow</h2>
+      <ol>
+        <li>Select a country on the map or country table → geography filter applied.</li>
+        <li>Click an API group chip → narrows to that endpoint family.</li>
+        <li>Click a username in the users chart or detail table → isolates one account.</li>
+        <li>Use the "Clear" action next to any active filter to remove it.</li>
+      </ol>
+      <p>Filters compose: all active filters are ANDed together. The KPI row, charts, and detail table always reflect the current filtered subset.</p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li><strong>403 page:</strong> your account is not in the admin allowlist in <code>config.py</code>.</li>
+        <li><strong>No data:</strong> confirm the analytics DB has events logged (check <code>log/server.out.log</code>) and click Refresh.</li>
+        <li><strong>Map does not render:</strong> ECharts assets are missing from <code>/js/</code> — re-run <code>scripts/init.sh</code>.</li>
+        <li><strong>Counts look low:</strong> check if "Hide local IPs" is on and filtering out most of your traffic.</li>
+      </ul>
+    </section>
+
+    <footer class="docs-footer">
+      <a href="/docs/benchmark_monitor_guide.html" class="docs-footer-prev">← Live Monitor</a>
+      <a href="/docs/benchmark_guided.html" class="docs-footer-next">Benchmark (Guided) →</a>
+    </footer>
+  </main>
+  <script src="/js/docs_theme.js"></script>
+</body>
+</html>

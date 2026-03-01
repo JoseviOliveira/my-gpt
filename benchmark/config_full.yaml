@@ -173,7 +173,7 @@ scoring:
     efficiency: 0.05
 
 output:
-  report_path: "static/docs/benchmark.html"
+  report_path: "static/docs/benchmark_guided.html"
   template_path: "benchmark/templates/report_template.html"
   log_level: "INFO"
 

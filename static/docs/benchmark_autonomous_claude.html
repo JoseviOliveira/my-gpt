@@ -2,7 +2,7 @@
 <html lang="en" class="docs-page">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no">
 <script data-theme-bootstrap>
   (function(){
     const key = 'theme';
@@ -20,7 +20,7 @@
     }
   })();
 </script>
-<title>Benchmark Report by Claude</title>
+<title>Benchmark Report (Autonomous Claude)</title>
 <link rel="stylesheet" href="/css/theme.css">
 <link rel="stylesheet" href="/css/ui.css">
 <link rel="stylesheet" href="/css/docs.css">
@@ -56,7 +56,12 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 
 body {
   background: var(--paper);
@@ -64,12 +69,18 @@ body {
   font-family: var(--serif);
   font-size: 15px;
   line-height: 1.7;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .claude-main {
   max-width: 1320px;
   margin: 0 auto;
   padding: 80px clamp(16px, 4vw, 32px) clamp(24px, 5vw, 64px);
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 /* ── COVER ── */
@@ -232,6 +243,9 @@ body {
   max-width: 1320px;
   margin: 0 auto;
   padding: 0 48px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .section {
@@ -520,6 +534,24 @@ body {
   font-size: 11px;
 }
 
+canvas {
+  max-width: 100%;
+}
+
+.section,
+.chart-card,
+.kpi-card,
+.finding-card,
+.cover-score-row,
+.progress-row,
+.pr-bar-wrap,
+.pr-label,
+.pr-val,
+#verdictCards,
+#findingsGrid {
+  min-width: 0;
+}
+
 @media (max-width: 900px) {
   .cover { grid-template-columns: 1fr; }
   .cover-right { display: none; }
@@ -527,7 +559,7 @@ body {
   .two-col, .three-col, .four-col { grid-template-columns: 1fr; }
 }
 
-/* ── DOCS LOOK & FEEL ALIGNMENT (match benchmark.html shell) ── */
+/* ── DOCS LOOK & FEEL ALIGNMENT (match benchmark_guided.html shell) ── */
 body {
   background: var(--bg);
   color: var(--ink);
@@ -701,27 +733,117 @@ body {
     display: block;
   }
 }
+
+@media (max-width: 640px) {
+  .claude-main {
+    padding: 80px 12px 24px;
+  }
+
+  .cover-left,
+  .cover-right,
+  .section {
+    padding: 16px;
+  }
+
+  .chart-card {
+    padding: 16px;
+  }
+
+  .cover-meta-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .cs-model {
+    min-width: 86px;
+    font-size: 11px;
+  }
+
+  .two-col,
+  .three-col,
+  .four-col,
+  #verdictCards,
+  #findingsGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #verdictCards .verdict-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .progress-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pr-bar-wrap {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .reliability-extra {
+    margin-left: 0 !important;
+    min-width: 0 !important;
+    overflow-wrap: anywhere;
+  }
+
+  .report-footer {
+    padding: 16px;
+  }
+
+  .report-footer span {
+    overflow-wrap: anywhere;
+  }
+
+  .scorecard {
+    font-size: 11px;
+  }
+
+  .scorecard thead th,
+  .scorecard tbody td {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
 </style>
 </head>
-<body>
+<body data-orientation-tip="Rotate for the full experience.">
 <nav class="docs-nav">
-  <a href="/" class="docs-nav-back">← Back to app</a>
+  <a href="/" class="docs-nav-back">← App</a>
   <div class="docs-nav-links">
-    <a href="/docs/index.html">Index</a>
-    <a href="/docs/user.html">User Guide</a>
-    <a href="/docs/architecture.html">Architecture</a>
-    <a href="/docs/engineering.html">Engineering</a>
-    <a href="/docs/installation.html">Installation</a>
-    <a href="/docs/audience.html">Audience</a>
-    <a href="/docs/handwrite.html">About</a>
-    <a href="/docs/benchmark.html" class="active">Benchmarks</a>
-    <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
+    <a href="/docs/index.html">Home</a>
+    <div class="docs-nav-group">
+      <button class="docs-nav-summary" type="button">Learn</button>
+      <div class="docs-nav-dropdown">
+        <a href="/docs/user.html">User Guide</a>
+        <a href="/docs/installation.html">Installation</a>
+      </div>
+    </div>
+    <div class="docs-nav-group">
+      <button class="docs-nav-summary" type="button">Project</button>
+      <div class="docs-nav-dropdown">
+        <a href="/docs/handwrite.html">About</a>
+        <a href="/docs/audience.html">Who Is This For</a>
+        <a href="/docs/engineering.html">Engineering</a>
+        <a href="/docs/architecture.html">Architecture</a>
+      </div>
+    </div>
+    <div class="docs-nav-group">
+      <button class="docs-nav-summary" type="button">Perf</button>
+      <div class="docs-nav-dropdown">
+        <a href="/docs/benchmark_monitor_guide.html">Live Monitor</a>
+        <a href="/docs/benchmark_guided.html">Benchmark (Guided)</a>
+        <a href="/docs/benchmark_autonomous_claude.html">Benchmark (Claude)</a>
+        <a href="/docs/dashboard.html">Analytics</a>
+      </div>
+    </div>
   </div>
 </nav>
 <main class="claude-main">
 <header class="docs-header">
-  <h1>Benchmark Report by Claude</h1>
+  <h1>Benchmark Report (Autonomous Claude)</h1>
   <p style="color:var(--toggle-ink);font-size:17px;">Alternative benchmark analysis with different scoring emphasis and visualizations.</p>
+  <p class="docs-note"><strong>Mobile tip:</strong> for the best reading experience, rotate your phone to <strong>landscape</strong> when reviewing large tables.</p>
 </header>
 
 <!-- ═══════════════════════ COVER ═══════════════════════ -->
@@ -1401,21 +1523,23 @@ new Chart(document.getElementById('chartTTFTPercentiles'),{
 // ─────────────── TTFT SWARM ───────────────
 {
   const LABELS_X = [10000,15000,20000,25000,30000,35000,40000,45000,50000,55000,60000];
-  const TOTAL_W = 780;
+  const isMobile = window.matchMedia('(max-width: 640px)').matches;
+  const LABEL_W = isMobile ? 96 : 140;
+  const TOTAL_W = isMobile ? 560 : 780;
   const MAX_MS = 62000;
   let html = '<div style="font-family:\'Overpass Mono\',monospace;font-size:10px;">';
   // ruler
-  html += '<div style="display:flex;margin-left:140px;margin-bottom:4px;color:rgba(0,0,0,0.3);">';
+  html += `<div style="position:relative;width:${TOTAL_W}px;height:12px;margin-left:${LABEL_W}px;margin-bottom:4px;color:rgba(0,0,0,0.3);">`;
   LABELS_X.forEach(l => {
     const x = (l/MAX_MS)*TOTAL_W;
-    html += `<span style="position:absolute;left:${140+x}px">${l/1000}s</span>`;
+    html += `<span style="position:absolute;left:${x}px;transform:translateX(-50%);white-space:nowrap;">${l/1000}s</span>`;
   });
   html += '</div>';
 
   MODELS.forEach(m => {
     const vals = TTFT_ALL[m];
     html += `<div style="display:flex;align-items:center;margin-bottom:5px;position:relative;">`;
-    html += `<span style="min-width:140px;color:rgba(0,0,0,0.7);font-size:10px;padding-right:8px">${m}</span>`;
+    html += `<span style="width:${LABEL_W}px;flex:0 0 ${LABEL_W}px;color:rgba(0,0,0,0.7);font-size:10px;padding-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m}</span>`;
     html += `<div style="position:relative;height:14px;width:${TOTAL_W}px;background:rgba(0,0,0,0.04);border-radius:3px;overflow:visible;">`;
 
     // threshold lines
@@ -1435,7 +1559,7 @@ new Chart(document.getElementById('chartTTFTPercentiles'),{
   });
 
   // legend
-  html += `<div style="margin-left:140px;margin-top:8px;display:flex;gap:20px;color:rgba(0,0,0,0.4);font-size:10px;">
+  html += `<div style="margin-left:${LABEL_W}px;margin-top:8px;display:flex;flex-wrap:wrap;gap:10px 16px;color:rgba(0,0,0,0.4);font-size:10px;">
     <span><span style="display:inline-block;width:10px;height:10px;background:rgba(26,122,74,0.7);border-radius:1px;margin-right:4px"></span>&lt;13s fast</span>
     <span><span style="display:inline-block;width:10px;height:10px;background:rgba(21,101,192,0.6);border-radius:1px;margin-right:4px"></span>13–25s ok</span>
     <span><span style="display:inline-block;width:10px;height:10px;background:rgba(184,92,0,0.65);border-radius:1px;margin-right:4px"></span>25–45s slow</span>
@@ -1733,7 +1857,7 @@ new Chart(document.getElementById('chartTTFTPercentiles'),{
         <div class="pr-bar" style="width:${rate}%;background:${barColor}"></div>
       </div>
       <span class="pr-val" style="color:${barColor}">${rate}%</span>
-      <span style="font-family:var(--mono);font-size:10px;color:#999;min-width:120px;margin-left:12px">
+      <span class="reliability-extra" style="font-family:var(--mono);font-size:10px;color:#999;min-width:120px;margin-left:12px">
         ${s.ok}/${s.total} ok
         ${s.empty>0?`· <span style="color:#b71c1c">${s.empty} empty</span>`:''}
         ${s.killed>0?`· <span style="color:#e07a2a">${s.killed} killed</span>`:''}
@@ -2021,7 +2145,7 @@ new Chart(document.getElementById('chartVerbosity'),{
         </div>
         <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:${accentColor};margin-bottom:6px">${sc.composite.toFixed(1)}<span style="font-size:12px;color:rgba(0,0,0,0.3);font-weight:400">/100</span></div>
         <div class="fc-body">${vd.note}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:14px;">
+        <div class="verdict-metrics" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:14px;">
           ${[
             ['Reliability', sc.raw.successRate.toFixed(0)+'%'],
             ['Latency', (sc.raw.medTTFT/1000).toFixed(1)+'s'],
@@ -2057,8 +2181,8 @@ new Chart(document.getElementById('chartVerbosity'),{
 }
 </script>
 <footer class="docs-footer">
-  <a href="/docs/benchmark.html" class="docs-footer-prev">← Benchmarks</a>
-  <a href="/docs/benchmark_monitor.html" class="docs-footer-next">Benchmark Monitor →</a>
+  <a href="/docs/benchmark_guided.html" class="docs-footer-prev">← Benchmark (Guided)</a>
+  <a href="/docs/benchmark_monitor_guide.html" class="docs-footer-next">Live Monitor →</a>
 </footer>
 </main>
 <script src="/js/docs_theme.js"></script>

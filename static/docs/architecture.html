@@ -28,18 +28,34 @@
 </head>
 <body>
   <nav class="docs-nav">
-    <a href="/" class="docs-nav-back">← Back to app</a>
+    <a href="/" class="docs-nav-back">← App</a>
     <div class="docs-nav-links">
-      <a href="/docs/index.html">Index</a>
-      <a href="/docs/user.html">User Guide</a>
-      <a href="/docs/architecture.html" class="active">Architecture</a>
-      <a href="/docs/engineering.html">Engineering</a>
-      <a href="/docs/installation.html">Installation</a>
-      <a href="/docs/audience.html">Audience</a>
-      <a href="/docs/handwrite.html">About</a>
-      <a href="/docs/benchmark.html">Benchmarks</a>
-      <a href="/docs/benchmark_monitor.html">Benchmark Monitor</a>
-
+      <a href="/docs/index.html">Home</a>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Learn</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/user.html">User Guide</a>
+          <a href="/docs/installation.html">Installation</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Project</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/handwrite.html">About</a>
+          <a href="/docs/audience.html">Who Is This For</a>
+          <a href="/docs/engineering.html">Engineering</a>
+          <a href="/docs/architecture.html">Architecture</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Perf</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/benchmark_monitor_guide.html">Live Monitor</a>
+          <a href="/docs/benchmark_guided.html">Benchmark (Guided)</a>
+          <a href="/docs/benchmark_autonomous_claude.html">Benchmark (Claude)</a>
+          <a href="/docs/dashboard.html">Analytics</a>
+        </div>
+      </div>
     </div>
   </nav>
 
@@ -226,10 +242,52 @@
         <li><strong>Runner:</strong> Executes benchmark scope (models, datasets, tasks), records per-task outcomes, and updates run lifecycle status.</li>
         <li><strong>Run state storage:</strong> Persists benchmark telemetry and task status for safe resume/reset behavior.</li>
         <li><strong>Read APIs:</strong> Exposes benchmark status/dataset/last-task endpoints consumed by the monitor UI.</li>
-        <li><strong>Report layer:</strong> <code>benchmark.html</code> and <code>benchmark_claude.html</code> provide post-run analysis views over collected results.</li>
+        <li><strong>Report layer:</strong> <code>benchmark_guided.html</code> and <code>benchmark_autonomous_claude.html</code> provide post-run analysis views over collected results.</li>
         <li><strong>Live monitor:</strong> <code>benchmark_monitor.html</code> polls run state and metrics to visualize progress in near real time.</li>
       </ul>
       <p><strong>Operational split:</strong> reports are static analysis snapshots; monitor is runtime observability for in-progress runs.</p>
+    </section>
+
+    <section class="docs-section" id="live-benchmark-monitor-technical">
+      <h2>Live Benchmark Monitor</h2>
+      <p><strong>Page:</strong> <code>/docs/benchmark_monitor.html</code>. This is a read-only runtime observability console. It is intentionally more complex than the dashboard because it must track in-flight execution, not only aggregated history.</p>
+      <p><strong>Data channels and cadence</strong></p>
+      <ul>
+        <li><strong>Run/state channel:</strong> <code>/api/benchmark/status</code> is polled at high frequency (<code>200ms</code> UI loop with request throttling) and is the source of truth for run identity, lifecycle, scope, and rolling metrics.</li>
+        <li><strong>Dataset/task channel:</strong> <code>/api/benchmark/datasets</code> every ~<code>3s</code> for per-dataset progress and task-level pills.</li>
+        <li><strong>Last-task channel:</strong> <code>/api/benchmark/last_task</code> every ~<code>3s</code> for detailed prompt/response/evaluation context, with "keep last known task" behavior to avoid UI flicker.</li>
+        <li><strong>Fallback channels:</strong> <code>/api/gpu</code> (~<code>5s</code>) and <code>/api/temperature</code> (~<code>10s</code>) are used when those samples are missing from benchmark state payloads.</li>
+      </ul>
+      <p><strong>State model and reconciliation</strong></p>
+      <ul>
+        <li><strong>Run identity gate:</strong> monitor keys state by <code>run_id</code> plus start timestamp and resets charts/pills when a new run or restart is detected.</li>
+        <li><strong>Progress guards:</strong> protects against regressions from transient payloads (e.g., non-monotonic percentage), while still handling explicit reset transitions.</li>
+        <li><strong>Staleness detection:</strong> running state is downgraded to <code>NOT RUNNING</code> if update age exceeds threshold, preventing false "active" UI when backend polling stalls.</li>
+        <li><strong>Workflow state machine:</strong> derives <code>cooling -> thinking -> streaming -> evaluating -> done</code> from server task lifecycle and cooldown metadata, including live timers.</li>
+        <li><strong>Cross-source merge:</strong> combines status payload, dataset payload, and last-task payload into one coherent presentation layer (cards, pills, streaming panel, charts).</li>
+      </ul>
+      <p><strong>UI composition</strong></p>
+      <ul>
+        <li><strong>Realtime telemetry cards:</strong> tokens/sec, file descriptors, CPU, GPU, GPU temperature, disk I/O with bounded local history and adaptive chart scaling.</li>
+        <li><strong>Task-list layer:</strong> model overview pills, datasets overview pills, and current dataset task pills with status coloring and live-task highlighting.</li>
+        <li><strong>Streaming details layer:</strong> shows active request text, partial response, evaluation outcome, and transitional states (<code>WAITING</code>, <code>EVALUATING</code>, <code>DONE</code>).</li>
+        <li><strong>Operator controls:</strong> persisted local preferences for hiding/showing top cards, pills groups, and docs chrome, optimized for long monitoring sessions.</li>
+      </ul>
+      <p><strong>Operational intent:</strong> use this page during execution and incident analysis. Use guided/Claude reports for post-run interpretation and decision summaries.</p>
+      <p>→ <a href="/docs/benchmark_monitor_guide.html">User guide: Live Benchmark Monitor</a></p>
+    </section>
+
+    <section class="docs-section">
+      <h2>Analytics Dashboard</h2>
+      <p><strong>Page:</strong> <code>/dashboard</code> (served by <code>dashboard_routes.py</code>). This is an admin-only analytics surface over recorded HTTP events.</p>
+      <ul>
+        <li><strong>Access control:</strong> route and API are protected by admin allowlist checks; non-admin requests return <code>403</code>.</li>
+        <li><strong>Data API:</strong> <code>/api/dashboard/analytics/summary</code> with optional <code>limit</code> parameter (default behavior in UI: last 500 events).</li>
+        <li><strong>Fetch model:</strong> snapshot fetch on load and on user-triggered refresh/filter changes (no fixed auto-refresh interval).</li>
+        <li><strong>Derived analytics:</strong> unique users/IPs, active users (10m), country aggregation, path-group decomposition, per-user activity, and paginated event table.</li>
+        <li><strong>Filter composition:</strong> country, API group, and username filters can stack; optional "hide local/private IPs" filter rewrites all panel totals from the same filtered subset.</li>
+      </ul>
+      <p>→ <a href="/docs/dashboard.html">User guide: Analytics Dashboard</a></p>
     </section>
 
     <section class="docs-section">
@@ -261,7 +319,7 @@
 │       └── tts/               # TTS runtime, chunking, normalization
 ├── static/                    # Frontend assets
 │   ├── index.html             # Main SPA shell
-│   ├── admin.html             # Analytics dashboard
+│   ├── dashboard.html         # Analytics dashboard
 │   ├── js/                    # JavaScript modules
 │   ├── css/                   # Theme and UI styles
 │   └── docs/                  # Documentation pages
@@ -300,6 +358,7 @@
           <tr><td><code>/api/benchmark/status</code></td><td>GET</td><td>Current benchmark run status and scope</td></tr>
           <tr><td><code>/api/benchmark/datasets</code></td><td>GET</td><td>Dataset-level progress and task completion summary</td></tr>
           <tr><td><code>/api/benchmark/last_task</code></td><td>GET</td><td>Last executed task details for monitor display</td></tr>
+          <tr><td><code>/api/dashboard/analytics/summary</code></td><td>GET</td><td>Admin analytics snapshot for dashboard panels (supports <code>?limit=</code>)</td></tr>
           <tr><td><code>/config</code></td><td>GET</td><td>Runtime configuration</td></tr>
           <tr><td><code>/health</code></td><td>GET</td><td>Ollama availability check</td></tr>
         </tbody>
