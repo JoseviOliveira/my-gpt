@@ -1,6 +1,7 @@
 # Local Chat + Benchmark
 
 Local-first chat app (Flask + vanilla JS + Ollama) with an integrated benchmark framework and benchmark monitor monitor.
+The app is running on https://josevi.ddns.net
 
 ## What this repo includes
 
