@@ -36,109 +36,102 @@
         <div class="docs-nav-dropdown">
           <a href="/docs/user.html">User Guide</a>
           <a href="/docs/installation.html">Installation</a>
+          <a href="/docs/audience.html">Who Is This For</a>
         </div>
       </div>
       <div class="docs-nav-group">
         <button class="docs-nav-summary" type="button">Project</button>
         <div class="docs-nav-dropdown">
-          <a href="/docs/handwrite.html">About</a>
-          <a href="/docs/audience.html">Who Is This For</a>
-          <a href="/docs/engineering.html">Engineering</a>
           <a href="/docs/architecture.html">Architecture</a>
+          <a href="/docs/engineering.html">Engineering</a>
+          <a href="/docs/handwrite.html">About</a>
         </div>
       </div>
       <div class="docs-nav-group">
         <button class="docs-nav-summary" type="button">Perf</button>
         <div class="docs-nav-dropdown">
-          <a href="/docs/benchmark_monitor_guide.html">Live Monitor</a>
           <a href="/docs/benchmark_guided.html">Benchmark (Guided)</a>
           <a href="/docs/benchmark_autonomous_claude.html">Benchmark (Claude)</a>
+          <a href="/docs/benchmark_monitor_guide.html">Live Monitor</a>
           <a href="/docs/dashboard.html">Analytics</a>
         </div>
       </div>
     </div>
   </nav>
 
-  <main class="docs-content" style="max-width:1000px;">
+  <main class="docs-content" style="max-width:1280px;">
     <header class="docs-header">
       <h1>Documentation</h1>
       <p style="color:var(--toggle-ink);font-size:17px;">Everything you need to use, understand, and operate your private GPT assistant.</p>
     </header>
 
     <section class="docs-section">
-      <h2>Get Started</h2>
-      <p>The two documents you need first.</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:4px;">
+      <h2>Learn - Get Started</h2>
+      <p>The three documents you need first.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:4px;">
         <article class="docs-section" style="margin:0;">
           <h2>User Guide</h2>
           <p>Day-to-day workflows: composing prompts, dictating with STT, switching reasoning modes, managing chat history, and reading the GPU KPI.</p>
-          <a href="/docs/user.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open guide →</a>
+          <a href="/docs/user.html" style="margin-top:auto;align-self:flex-end;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open →</a>
         </article>
         <article class="docs-section" style="margin:0;">
           <h2>Installation</h2>
           <p>Step-by-step instructions to install dependencies, configure credentials, and run the stack locally on macOS.</p>
-          <a href="/docs/installation.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open guide →</a>
+          <a href="/docs/installation.html" style="margin-top:auto;align-self:flex-end;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open →</a>
+        </article>
+        <article class="docs-section" style="margin:0;">
+          <h2>Who Is This For</h2>
+          <p>Candidate profiles and minimum skills required to build, install, or maintain the project at home.</p>
+          <a href="/docs/audience.html" style="margin-top:auto;align-self:flex-end;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open →</a>
         </article>
       </div>
     </section>
 
     <section class="docs-section">
-      <h2>Technical Reference</h2>
+      <h2>Project - Technical Reference</h2>
       <p>How the system is built and the principles behind it.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:4px;">
         <article class="docs-section" style="margin:0;">
           <h2>Architecture</h2>
           <p>How the frontend, Flask backend, neural speech-to-text, and Ollama proxy fit together under the hood.</p>
-          <a href="/docs/architecture.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open guide →</a>
+          <a href="/docs/architecture.html" style="margin-top:auto;align-self:flex-end;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open →</a>
         </article>
         <article class="docs-section" style="margin:0;">
           <h2>Engineering Principles</h2>
           <p>Design constraints, local-first philosophy, and coding standards that govern the project.</p>
-          <a href="/docs/engineering.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Read principles →</a>
+          <a href="/docs/engineering.html" style="margin-top:auto;align-self:flex-end;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open →</a>
         </article>
-      </div>
-    </section>
-
-    <section class="docs-section">
-      <h2>About the Project</h2>
-      <p>Background, context, and intended audience.</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:4px;">
         <article class="docs-section" style="margin:0;">
           <h2>About This Project</h2>
           <p>The story behind this AI-assisted app — who, why, and how it evolved over time.</p>
-          <a href="/docs/handwrite.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Read more →</a>
-        </article>
-        <article class="docs-section" style="margin:0;">
-          <h2>Who Is This For</h2>
-          <p>Candidate profiles and minimum skills required to build, install, or maintain the project at home.</p>
-          <a href="/docs/audience.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open overview →</a>
+          <a href="/docs/handwrite.html" style="margin-top:auto;align-self:flex-end;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open →</a>
         </article>
       </div>
     </section>
 
     <section class="docs-section">
-      <h2>Performance &amp; Observability</h2>
+      <h2>Perf - Performance &amp; Observability</h2>
       <p>Benchmark reports, live run monitoring, and usage analytics.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:4px;">
         <article class="docs-section" style="margin:0;">
-          <h2>Live Monitor</h2>
-          <p>Real-time benchmark execution: task progress, telemetry charts, GPU and throughput metrics.</p>
-          <a href="/docs/benchmark_monitor_guide.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open guide →</a>
-        </article>
-        <article class="docs-section" style="margin:0;">
           <h2>Benchmark (Guided)</h2>
           <p>Main report with human guidance: methodology, caveats, seven-axis radar, and final model ranking.</p>
-          <a href="/docs/benchmark_guided.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open report →</a>
+          <a href="/docs/benchmark_guided.html" style="margin-top:auto;align-self:flex-end;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open →</a>
         </article>
         <article class="docs-section" style="margin:0;">
           <h2>Benchmark (Claude)</h2>
           <p>Independent analysis by Claude from raw benchmark data, without human guidance or framing.</p>
-          <a href="/docs/benchmark_autonomous_claude.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open report →</a>
+          <a href="/docs/benchmark_autonomous_claude.html" style="margin-top:auto;align-self:flex-end;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open →</a>
+        </article>
+        <article class="docs-section" style="margin:0;">
+          <h2>Live Monitor</h2>
+          <p>Real-time benchmark execution: task progress, telemetry charts, GPU and throughput metrics.</p>
+          <a href="/docs/benchmark_monitor_guide.html" style="margin-top:auto;align-self:flex-end;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open →</a>
         </article>
         <article class="docs-section" style="margin:0;">
           <h2>Analytics Dashboard</h2>
           <p>Admin-only usage telemetry: unique users, geography map, API groups, and full event table.</p>
-          <a href="/docs/dashboard.html" style="margin-top:auto;align-self:flex-start;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open guide →</a>
+          <a href="/docs/dashboard.html" style="margin-top:auto;align-self:flex-end;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--panel);text-decoration:none;font-weight:600;font-size:14px;">Open →</a>
         </article>
       </div>
     </section>

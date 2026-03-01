@@ -43,6 +43,104 @@
     }
   }
 
+  const NAV_TEMPLATE = `
+    <a href="/" class="docs-nav-back">← App</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Home</a>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Learn</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/user.html">User Guide</a>
+          <a href="/docs/installation.html">Installation</a>
+          <a href="/docs/audience.html">Who Is This For</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Project</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/architecture.html">Architecture</a>
+          <a href="/docs/engineering.html">Engineering</a>
+          <a href="/docs/handwrite.html">About</a>
+        </div>
+      </div>
+      <div class="docs-nav-group">
+        <button class="docs-nav-summary" type="button">Perf</button>
+        <div class="docs-nav-dropdown">
+          <a href="/docs/benchmark_guided.html">Benchmark (Guided)</a>
+          <a href="/docs/benchmark_autonomous_claude.html">Benchmark (Claude)</a>
+          <a href="/docs/benchmark_monitor_guide.html">Live Monitor</a>
+          <a href="/docs/dashboard.html">Analytics</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const DOC_ORDER = [
+    '/docs/user.html',
+    '/docs/installation.html',
+    '/docs/audience.html',
+    '/docs/architecture.html',
+    '/docs/engineering.html',
+    '/docs/handwrite.html',
+    '/docs/benchmark_guided.html',
+    '/docs/benchmark_autonomous_claude.html',
+    '/docs/benchmark_monitor_guide.html',
+    '/docs/dashboard.html',
+  ];
+
+  const DOC_LABELS = {
+    '/docs/user.html': 'User Guide',
+    '/docs/installation.html': 'Installation',
+    '/docs/audience.html': 'Who Is This For',
+    '/docs/architecture.html': 'Architecture',
+    '/docs/engineering.html': 'Engineering',
+    '/docs/handwrite.html': 'About',
+    '/docs/benchmark_guided.html': 'Benchmark (Guided)',
+    '/docs/benchmark_autonomous_claude.html': 'Benchmark (Claude)',
+    '/docs/benchmark_monitor_guide.html': 'Live Monitor',
+    '/docs/dashboard.html': 'Analytics',
+    '/docs/index.html': 'Index',
+  };
+
+  function renderSharedNav() {
+    const nav = document.querySelector('nav.docs-nav');
+    if (!nav) return;
+    nav.innerHTML = NAV_TEMPLATE;
+  }
+
+  function renderSharedFooter() {
+    const footer = document.querySelector('footer.docs-footer');
+    if (!footer) return;
+    const currentPath = location.pathname;
+
+    if (currentPath === '/docs/index.html') {
+      footer.innerHTML = `<a href="/docs/user.html" class="docs-footer-next">User Guide →</a>`;
+      return;
+    }
+
+    if (currentPath === '/docs/benchmark_monitor.html') {
+      footer.innerHTML = `
+        <a href="/docs/benchmark_autonomous_claude.html" class="docs-footer-prev">← Benchmark (Claude)</a>
+        <a href="/docs/benchmark_monitor_guide.html" class="docs-footer-next">Live Monitor →</a>
+      `;
+      return;
+    }
+
+    const idx = DOC_ORDER.indexOf(currentPath);
+    if (idx < 0) return;
+    const prevPath = idx === 0 ? '/docs/index.html' : DOC_ORDER[idx - 1];
+    const nextPath = idx === DOC_ORDER.length - 1 ? '/docs/index.html' : DOC_ORDER[idx + 1];
+    const prevLabel = DOC_LABELS[prevPath] || 'Previous';
+    const nextLabel = DOC_LABELS[nextPath] || 'Next';
+    footer.innerHTML = `
+      <a href="${prevPath}" class="docs-footer-prev">← ${prevLabel}</a>
+      <a href="${nextPath}" class="docs-footer-next">${nextLabel} →</a>
+    `;
+  }
+
+  renderSharedNav();
+  renderSharedFooter();
+
   const backLinks = document.querySelectorAll('a.docs-nav-back, a[href="/"]');
   if (backLinks.length) {
     backLinks.forEach((link) => {
