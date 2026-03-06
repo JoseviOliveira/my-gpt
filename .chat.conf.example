@@ -1,0 +1,71 @@
+# Copy this file to .chat.conf and edit values for your machine.
+# scripts/run.sh automatically sources .chat.conf when present.
+
+# --------------------------------------------------------------------
+# Required: auth + port + model
+# --------------------------------------------------------------------
+export APP_USERS="admin:change-me,guest:guest"
+export APP_GUEST_USER="guest"
+export ANALYTICS_ADMINS="admin"
+export CHAT_PORT="4200"
+
+export MODEL="gpt-oss:20b"
+export SUMMARY_MODEL="gpt-oss:20b"
+export APP_LOG_LEVEL="INFO"
+
+# --------------------------------------------------------------------
+# Optional: non-admin limits
+# --------------------------------------------------------------------
+# export NON_ADMIN_DAILY_PROMPT_LIMIT="100"
+# export NON_ADMIN_CHAT_PROMPT_LIMIT="30"
+# export NON_ADMIN_CHAT_LIMIT="10"
+# export NON_ADMIN_ALLOWED_MODES="fast,normal"
+# export NON_ADMIN_MODEL_ALLOWLIST="deepseek-r1:8b,gemma3:4b,magistral:24b"
+# export NON_ADMIN_FAST_MODEL="deepseek-r1:8b"
+# export NON_ADMIN_NORMAL_MODEL="gemma3:4b"
+
+# --------------------------------------------------------------------
+# Optional: Ollama endpoint override
+# --------------------------------------------------------------------
+# export OLLAMA_URL="http://127.0.0.1:11434"
+# export MODEL_EXTRA="gemma3:4b,gemma3:12b,magistral:24b"
+
+# --------------------------------------------------------------------
+# Optional: speech modes
+# --------------------------------------------------------------------
+export STT_MODE="browser"   # browser | whisper
+export TTS_MODE="browser"   # browser | coqui
+
+# Whisper tuning (only used when STT_MODE=whisper)
+# export WHISPER_MODEL="base"
+# export WHISPER_COMPUTE="int8"
+# export WHISPER_THREADS="6"
+# export WHISPER_DEVICE="cpu"
+# export WHISPER_BEAM="5"
+# export WHISPER_BEST_OF="5"
+# export WHISPER_TEMPERATURE="0.2"
+# export STT_MAX_SECONDS="20"
+
+# Coqui helper script (only used when TTS_MODE=coqui)
+# export COQUI_TTS_PY="$HOME/my-gpt/tts_env/bin/python"
+# export COQUI_TTS_SCRIPT="$HOME/my-gpt/scripts/tts_synthesize.py"
+
+# --------------------------------------------------------------------
+# Optional: eco mode
+# --------------------------------------------------------------------
+# export ECO_MODE="1"
+# export ECO_MODEL="gemma3:4b"
+# export ECO_SUMMARY_MODEL="gemma3:4b"
+# export ECO_OLLAMA_NUM_PARALLEL="1"
+# export ECO_OLLAMA_MAX_LOADED_MODELS="1"
+# export ECO_OLLAMA_KEEP_ALIVE="1m"
+# export ECO_METADATA_IDLE_DELAY="20"
+# export ECO_METADATA_IDLE_CHECK_INTERVAL="5"
+# export ECO_APP_LOG_LEVEL="INFO"
+
+# --------------------------------------------------------------------
+# Optional: system path helpers (macOS/Homebrew)
+# --------------------------------------------------------------------
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+# export ESPEAK_PATH="/opt/homebrew/bin/espeak-ng"
+# export PHONEMIZER_ESPEAK_PATH="/opt/homebrew/bin/espeak-ng"

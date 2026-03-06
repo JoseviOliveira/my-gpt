@@ -185,7 +185,12 @@ def chat():
     blocked, status = _enforce_non_admin_limits(data, current_user)
     if blocked:
         return blocked, status
-    selected_model = resolve_model_choice(data)
+    # Benchmark runs must honor the exact model provided by runner config,
+    # even when it is not present in the UI allowlist.
+    if is_benchmark:
+        selected_model = (data.get("model") or "").strip() or MODEL
+    else:
+        selected_model = resolve_model_choice(data)
     messages_in = data.get("messages", [])
     if not is_benchmark:
         ensure_latest_user_language(messages_in)
@@ -254,7 +259,12 @@ def stream():
     blocked, status = _enforce_non_admin_limits(data, current_user)
     if blocked:
         return blocked, status
-    selected_model = resolve_model_choice(data)
+    # Benchmark runs must honor the exact model provided by runner config,
+    # even when it is not present in the UI allowlist.
+    if is_benchmark:
+        selected_model = (data.get("model") or "").strip() or MODEL
+    else:
+        selected_model = resolve_model_choice(data)
     messages_in = data.get("messages", [])
     if not is_benchmark:
         ensure_latest_user_language(messages_in)

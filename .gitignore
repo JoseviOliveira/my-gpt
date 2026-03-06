@@ -37,6 +37,7 @@ npm-debug.log
 
 # Local data and backups
 backups/
+static/pics/
 backup.sh
 chats/
 db/*
