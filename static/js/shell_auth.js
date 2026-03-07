@@ -92,7 +92,7 @@
   function updateSplashUI(){
     if (!splash.container) return;
     const logged = isLogged(), username = getUser();
-    if (splash.info) splash.info.textContent = logged ? `logged as ${username || 'user'}` : 'Enter your credentials to continue.';
+    if (splash.info) splash.info.textContent = logged ? `logged as ${username || 'user'}` : 'Enter your credentials to continue';
     splash.loginForm?.classList.toggle('hidden', logged);
     splash.continueBtn?.classList.toggle('hidden', !logged);
     splash.switchBtn?.classList.toggle('hidden', !logged);

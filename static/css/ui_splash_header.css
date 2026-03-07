@@ -37,6 +37,12 @@
   color:var(--muted);
 }
 
+.splash-hint{
+  margin-top:-10px;
+  font-size:14px;
+  opacity:.9;
+}
+
 .splash-form{
   display:flex;
   flex-direction:column;
@@ -177,4 +183,3 @@
    justify-self:end;            /* push to the far right of header */
    justify-content:flex-end;    /* inputs/buttons packed right inside */
    }
-

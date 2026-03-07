@@ -148,16 +148,8 @@ def _needs_auth(path: str) -> bool:
         "/apple-touch-icon.png",
         "/apple-touch-icon-precomposed.png",
         "/js/docs_theme.js",
-        "/api/gpu",
-        "/api/temperature",
-        "/benchmark.log",
-        "/api/benchmark/status",
-        "/api/benchmark/datasets",
-        "/api/benchmark/last_task",
     }
     if path.startswith(("/css/", "/js/", "/icons/")):
-        return False
-    if path.startswith("/log/benchmark.log"):
         return False
     if path.startswith("/docs"):
         if path in {"/docs", "/docs/"} or path.endswith(".html"):
