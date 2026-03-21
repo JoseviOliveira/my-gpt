@@ -7,15 +7,15 @@ The app is running on https://josevi.ddns.net
 
 ### Chat app
 
-![Chat app UI](https://josevi.ddns.net/static/pics/app_light.png)
+![Chat app UI](static/pics/app_light.png)
 
 ### Dashboard module
 
-![Dashboard module](https://josevi.ddns.net/static/pics/analytics.png)
+![Dashboard module](static/pics/analytics.png)
 
 ### Benchmarking module
 
-![Benchmarking scorecard](https://josevi.ddns.net/static/pics/live_benchmark.png)
+![Benchmarking scorecard](static/pics/live_benchmark.png)
 
 ## Product Tour Video
 
