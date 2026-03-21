@@ -7,23 +7,20 @@ The app is running on https://josevi.ddns.net
 
 ### Chat app
 
-![Chat app UI](static/pics/app_light.png)
+![Chat app UI](https://josevi.ddns.net/static/pics/app_light.png)
 
 ### Dashboard module
 
-![Dashboard module](static/pics/analytics.png)
+![Dashboard module](https://josevi.ddns.net/static/pics/analytics.png)
 
 ### Benchmarking module
 
-![Benchmarking scorecard](static/pics/live_benchmark.png)
+![Benchmarking scorecard](https://josevi.ddns.net/static/pics/live_benchmark.png)
 
 ## Product Tour Video
 
-<p align="center">
-  iPhone walkthrough of chat, dashboard, and benchmarking flows.
-  <br/>
-  <a href="https://youtube.com/shorts/EI52n5I_2AE">Watch on YouTube Shorts</a>
-</p>
+iPhone walkthrough of chat, dashboard, and benchmarking flows.  
+[Watch on YouTube Shorts](https://youtube.com/shorts/EI52n5I_2AE)
 
 ## What this repo includes
 
