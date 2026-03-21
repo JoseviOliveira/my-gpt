@@ -23,11 +23,22 @@ logger = logging.getLogger(__name__)
 
 def _get_file_descriptor_count() -> dict[str, Any]:
     """Count open file descriptors for the current process."""
+    pid = os.getpid()
     try:
-        pid = os.getpid()
-        # On macOS, use lsof to count file descriptors
+        # Fast path on Unix-like systems (including macOS): no subprocess needed.
+        fd_dir = "/dev/fd"
+        if os.path.isdir(fd_dir):
+            # Filter out non-numeric entries defensively.
+            count = sum(1 for name in os.listdir(fd_dir) if str(name).isdigit())
+            if count >= 0:
+                return {"count": count, "pid": pid}
+    except Exception:
+        pass
+
+    try:
+        # Fallback: use lsof if /dev/fd is unavailable.
         result = subprocess.run(
-            ["lsof", "-p", str(pid)],
+            ["lsof", "-nP", "-p", str(pid)],
             capture_output=True,
             text=True,
             timeout=2
@@ -38,9 +49,9 @@ def _get_file_descriptor_count() -> dict[str, Any]:
             return {"count": max(0, fd_count), "pid": pid}
         return {"count": -1, "pid": pid, "error": "lsof failed"}
     except subprocess.TimeoutExpired:
-        return {"count": -1, "pid": os.getpid(), "error": "timeout"}
+        return {"count": -1, "pid": pid, "error": "timeout"}
     except Exception as e:
-        return {"count": -1, "pid": os.getpid(), "error": str(e)}
+        return {"count": -1, "pid": pid, "error": str(e)}
 
 
 def _db_path() -> str:
@@ -66,21 +77,29 @@ def _select_default_run(cur: sqlite3.Cursor) -> sqlite3.Row | None:
     """Pick the run to display when no explicit run_id is provided.
 
     Preference:
-    1) Active runs (running/initializing), most recently updated.
+    1) Fresh active runs (running/initializing), most recently updated.
     2) Otherwise, most recently updated historical run.
     """
     cur.execute(
         """
-        SELECT br.run_id, br.started_at, br.completed_at, br.status, rs.updated_at
+        SELECT
+            br.run_id,
+            br.started_at,
+            br.completed_at,
+            br.status,
+            rs.updated_at,
+            datetime(
+                REPLACE(REPLACE(COALESCE(rs.updated_at, br.completed_at, br.started_at), 'T', ' '), 'Z', '')
+            ) AS sort_ts
         FROM benchmark_runs br
         LEFT JOIN benchmark_run_state rs ON rs.run_id = br.run_id
         ORDER BY
             CASE
-                WHEN br.status = 'running' THEN 0
-                WHEN br.status = 'initializing' THEN 1
+                WHEN br.status IN ('running', 'initializing')
+                     AND sort_ts >= datetime('now', '-15 minutes') THEN 0
                 ELSE 2
             END,
-            datetime(COALESCE(rs.updated_at, br.completed_at, br.started_at)) DESC
+            sort_ts DESC
         LIMIT 1
         """
     )

@@ -1538,16 +1538,30 @@
             if (task_evaluating) {
                 workflow.thinking.status = 'completed';
                 workflow.streaming.status = 'completed';
-                workflow.evaluating = { status: 'active', live: true, time: null };
+                const startedAt = Number(task_evaluating.started_at);
+                const elapsedSec = Number.isFinite(startedAt)
+                    ? Math.max(0, (Date.now() - startedAt) / 1000)
+                    : null;
+                workflow.evaluating = { status: 'active', live: true, time: elapsedSec };
                 return workflow;
             }
 
             if (task_current) {
+                const startedAt = Number(task_current.started_at);
+                const sinceStartSec = Number.isFinite(startedAt)
+                    ? Math.max(0, (Date.now() - startedAt) / 1000)
+                    : null;
                 if (task_current.status === 'STREAMING') {
                     workflow.thinking.status = 'completed';
-                    workflow.streaming = { status: 'active', live: true, time: null };
+                    const ttftSec = Number.isFinite(task_current.ttft_ms)
+                        ? Math.max(0, task_current.ttft_ms / 1000)
+                        : 0;
+                    const streamingSec = sinceStartSec !== null
+                        ? Math.max(0, sinceStartSec - ttftSec)
+                        : null;
+                    workflow.streaming = { status: 'active', live: true, time: streamingSec };
                 } else {
-                    workflow.thinking = { status: 'active', live: true, time: null };
+                    workflow.thinking = { status: 'active', live: true, time: sinceStartSec };
                 }
                 return workflow;
             }
@@ -1571,6 +1585,7 @@
 
                     const info = document.getElementById(`pill${stage.charAt(0).toUpperCase() + stage.slice(1)}Info`);
                     if (!info) return;
+                    if (pillData.time !== undefined && pillData.time !== null) return;
 
                     // Calculate elapsed time
                     const key = stage;
@@ -2550,9 +2565,12 @@
         // Update task_evaluating from state.last_request
         function updateTaskEvaluating(state) {
             const req = state.last_request;
+            const runStatus = String(state?.status || '').toLowerCase();
+            const benchmarkActive = runStatus === 'running' || runStatus === 'initializing';
             
-            // Only show evaluating if request is completed but we don't have task_done yet
-            if (!req || req.status !== 'completed' || task_done) {
+            // Only show evaluating while the benchmark is actively running.
+            // Without this guard, stale last_request payloads can keep the timer increasing forever.
+            if (!benchmarkActive || !req || req.status !== 'completed' || task_done) {
                 if (task_evaluating !== null) {
                 }
                 task_evaluating = null;
@@ -2868,6 +2886,25 @@
         }
 
 
+        function monitorAuthHeaders() {
+            const shell = window.Shell;
+            if (shell && typeof shell.credHeader === 'function') {
+                try {
+                    return shell.credHeader() || {};
+                } catch {}
+            }
+            try {
+                const token = window.localStorage.getItem('authToken');
+                if (token) return { 'Authorization': `Bearer ${token}` };
+                const user = window.localStorage.getItem('u');
+                const pass = window.localStorage.getItem('p');
+                if (user && pass) {
+                    return { 'Authorization': `Basic ${btoa(`${user}:${pass}`)}` };
+                }
+            } catch {}
+            return {};
+        }
+
         async function fetchDatasetData(force = false) {
             const now = Date.now();
             if (!force && now - datasetLastFetch < 2500) return;
@@ -2884,7 +2921,11 @@
             }
             const url = `/api/benchmark/datasets${params.toString() ? `?${params}` : ''}`;
             try {
-                const resp = await fetch(url, { cache: 'no-store' });
+                const resp = await fetch(url, {
+                    cache: 'no-store',
+                    headers: monitorAuthHeaders(),
+                    credentials: 'same-origin'
+                });
                 const payload = await resp.json();
                 if (!resp.ok || !payload.ok) return;
                 datasetPayload = payload;
@@ -2907,7 +2948,11 @@
             }
             const url = `/api/benchmark/last_task${params.toString() ? `?${params}` : ''}`;
             try {
-                const resp = await fetch(url, { cache: 'no-store' });
+                const resp = await fetch(url, {
+                    cache: 'no-store',
+                    headers: monitorAuthHeaders(),
+                    credentials: 'same-origin'
+                });
                 const payload = await resp.json();
                 if (!resp.ok || !payload.ok) return;
                 if (!payload.task) {
@@ -2931,9 +2976,15 @@
             const now = Date.now();
             if (!force && now - statusLastFetch < 2500) return;
             statusLastFetch = now;
-            const url = '/api/benchmark/status';
+            const params = new URLSearchParams();
+            params.set('fd', '1');
+            const url = `/api/benchmark/status?${params.toString()}`;
             try {
-                const resp = await fetch(url, { cache: 'no-store' });
+                const resp = await fetch(url, {
+                    cache: 'no-store',
+                    headers: monitorAuthHeaders(),
+                    credentials: 'same-origin'
+                });
                 const payload = await resp.json();
                 if (!resp.ok || !payload.ok) return;
                 
@@ -3034,21 +3085,11 @@
             pushGpuFallback(util);
         });
 
-        function gpuAuthHeaders() {
-            const shell = window.Shell;
-            if (shell && typeof shell.credHeader === 'function') {
-                try {
-                    return shell.credHeader() || {};
-                } catch {}
-            }
-            return {};
-        }
-
         async function pollGpuUtilization() {
             if (!allowGpuFallback || gpuSource === 'state') return;
             try {
                 const resp = await fetch('/api/gpu', {
-                    headers: gpuAuthHeaders(),
+                    headers: monitorAuthHeaders(),
                     credentials: 'same-origin'
                 });
                 if (!resp.ok) return;
@@ -3063,7 +3104,7 @@
             if (!allowTempFallback) return;
             try {
                 const resp = await fetch('/api/temperature', {
-                    headers: gpuAuthHeaders(),
+                    headers: monitorAuthHeaders(),
                     credentials: 'same-origin'
                 });
                 if (!resp.ok) return;

@@ -30,6 +30,60 @@ logger = logging.getLogger(__name__)
 
 
 class BenchmarkRunner(DBMixin, TaskMixin, TelemetryMixin):
+    @staticmethod
+    def _scope_signature(scope: dict[str, Any] | None) -> tuple[tuple[str, ...], tuple[str, ...], int]:
+        """Return a compact signature for comparing benchmark scopes."""
+        scope = scope or {}
+        models = scope.get("models") or []
+        datasets = scope.get("datasets") or []
+
+        model_names: list[str] = []
+        for model in models:
+            if isinstance(model, dict):
+                name = str(model.get("name") or "").strip()
+            else:
+                name = str(model or "").strip()
+            if name:
+                model_names.append(name)
+
+        dataset_names: list[str] = []
+        for dataset in datasets:
+            if isinstance(dataset, dict):
+                name = str(dataset.get("dataset_name") or dataset.get("dataset_label") or "").strip()
+            else:
+                name = str(dataset or "").strip()
+            if name:
+                dataset_names.append(name)
+
+        tasks_total = int(scope.get("tasks_total") or 0)
+        return (tuple(model_names), tuple(dataset_names), tasks_total)
+
+    def _can_auto_resume_run(self, conn: sqlite3.Connection, run_id: str) -> bool:
+        """Allow auto-resume only when latest run scope matches current config scope."""
+        try:
+            row = conn.execute(
+                """
+                SELECT models_json, datasets_json, tasks_total
+                FROM benchmark_run_scope
+                WHERE run_id = ?
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (run_id,),
+            ).fetchone()
+            if not row:
+                return False
+            old_scope = {
+                "models": json.loads(row["models_json"] or "[]"),
+                "datasets": json.loads(row["datasets_json"] or "[]"),
+                "tasks_total": row["tasks_total"] or 0,
+            }
+            current_sig = self._scope_signature(self._run_scope)
+            old_sig = self._scope_signature(old_scope)
+            return old_sig == current_sig
+        except Exception as exc:
+            logger.warning("Failed to validate resume scope compatibility: %s", exc)
+            return False
 
     def __init__(self, config_path: str, stop_on_empty: bool = False,
                  task_filter: Optional[set[str]] = None,
@@ -135,7 +189,9 @@ class BenchmarkRunner(DBMixin, TaskMixin, TelemetryMixin):
                         resume_missing_telemetry = False
                         if old_status == "completed":
                             resume_missing_telemetry = self._has_missing_telemetry(old_run_id)
-                        if old_status in resume_statuses or (resume_completed and old_status == "completed") or resume_missing_telemetry:
+                        is_resumable_by_status = old_status in resume_statuses or (resume_completed and old_status == "completed") or resume_missing_telemetry
+                        scope_compatible = self._can_auto_resume_run(conn, old_run_id) if is_resumable_by_status else False
+                        if is_resumable_by_status and scope_compatible:
                             self.run_id = old_run_id
                             self.resume_run = True
                             self._resume_state = self._load_run_state(old_run_id)
@@ -144,6 +200,12 @@ class BenchmarkRunner(DBMixin, TaskMixin, TelemetryMixin):
                                 logger.info(f"Resuming completed run to fill missing telemetry: {self.run_id}")
                             else:
                                 logger.info(f"Resuming run: {self.run_id}")
+                        elif is_resumable_by_status and not scope_compatible:
+                            logger.info(
+                                "Skipping auto-resume for run %s: scope mismatch with current config (%s)",
+                                old_run_id,
+                                self.config_name,
+                            )
                         else:
                             logger.info(f"Latest run {old_run_id} not resumable by current policy (status={old_status})")
                 elif self._requested_resume_run_id:

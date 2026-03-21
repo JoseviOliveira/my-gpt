@@ -17,6 +17,7 @@ const adminLink = document.getElementById('statsLink');
 const settingsToggleBtn = document.getElementById('settingsToggle');
 const settingsPanel = document.getElementById('settingsPanel');
 const guestBadge = document.getElementById('guestBadge');
+const guestLimitPill = document.getElementById('guestLimitPill');
 const debugToggle = document.getElementById('debugToggle');
 const debugRadios = Array.from(document.querySelectorAll('input[name="debug-panel"]'));
 const logPanel = document.getElementById('logPanel');
@@ -137,6 +138,9 @@ const fetchAppConfig = async () => {
     setAdminLinkAccess(window.IS_ADMIN);
     if (guestBadge) {
       guestBadge.classList.toggle('hidden', !window.IS_GUEST);
+    }
+    if (guestLimitPill) {
+      guestLimitPill.classList.toggle('hidden', !window.IS_GUEST);
     }
     try {
       window.dispatchEvent(new CustomEvent('guest:ready', { detail: { guest: window.IS_GUEST } }));

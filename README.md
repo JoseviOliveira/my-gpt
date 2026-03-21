@@ -3,6 +3,28 @@
 Local-first chat app (Flask + vanilla JS + Ollama) with an integrated benchmark framework and benchmark monitor monitor.
 The app is running on https://josevi.ddns.net
 
+## Screenshots
+
+### Chat app
+
+![Chat app UI](static/pics/app_light.png)
+
+### Dashboard module
+
+![Dashboard module](static/pics/analytics.png)
+
+### Benchmarking module
+
+![Benchmarking scorecard](static/pics/live_benchmark.png)
+
+## Product Tour Video
+
+<p align="center">
+  iPhone walkthrough of chat, dashboard, and benchmarking flows.
+  <br/>
+  <a href="https://youtube.com/shorts/EI52n5I_2AE">Watch on YouTube Shorts</a>
+</p>
+
 ## What this repo includes
 
 - Chat app with auth, session history, STT/TTS support, and admin dashboard
