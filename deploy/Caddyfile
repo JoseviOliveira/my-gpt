@@ -1,6 +1,6 @@
 {
   log {
-    output file /Users/sevi/local-chat/log/caddy.log
+    output file {$APP_DIR}/log/caddy.log
     format json
   }
 }

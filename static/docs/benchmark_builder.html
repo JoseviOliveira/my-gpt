@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="en" class="docs-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script data-theme-bootstrap>
+    (function(){
+      const key = 'theme';
+      const root = document.documentElement;
+      let theme = null;
+      try { theme = localStorage.getItem(key); } catch {}
+      if (theme !== 'dark' && theme !== 'light') {
+        try {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch {
+          theme = 'light';
+        }
+      }
+      if (theme === 'dark') {
+        root.dataset.theme = 'dark';
+        root.classList.add('dark');
+      }
+    })();
+  </script>
+  <title>Benchmark Builder</title>
+  <meta name="description" content="Interactive seven-axis benchmark builder with live radar visualization and dynamic model re-ranking.">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/ui.css">
+  <link rel="stylesheet" href="/css/docs.css">
+  <style>
+    :root {
+      --builder-bg: #f8fafc;
+      --builder-card-bg: #ffffff;
+      --builder-card-bg-strong: #ffffff;
+      --builder-text: #0f172a;
+      --builder-muted: #475569;
+      --builder-border: rgba(15, 23, 42, 0.12);
+      --builder-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --builder-panel-bg:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.10), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.12), transparent 36%),
+        linear-gradient(180deg, #ffffff, #f8fbff 62%, #f1f5f9);
+      --builder-panel-ink: #0f172a;
+      --builder-panel-border: rgba(15, 23, 42, 0.1);
+      --builder-status-bg: rgba(59, 130, 246, 0.08);
+      --builder-status-border: rgba(148, 163, 184, 0.22);
+      --builder-status-label: #64748b;
+      --synth-body:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(241, 245, 249, 0.98)),
+        rgba(255, 255, 255, 0.92);
+      --synth-body-border: rgba(148, 163, 184, 0.28);
+      --synth-screw: rgba(148, 163, 184, 0.7);
+      --synth-readout:
+        linear-gradient(180deg, rgba(241, 245, 249, 0.98), rgba(226, 232, 240, 0.94));
+      --synth-readout-border: rgba(148, 163, 184, 0.24);
+      --synth-readout-label: #64748b;
+      --synth-readout-value: #0f766e;
+      --synth-track:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(226, 232, 240, 0.92)),
+        repeating-linear-gradient(
+          to bottom,
+          rgba(148, 163, 184, 0.22) 0,
+          rgba(148, 163, 184, 0.22) 2px,
+          transparent 2px,
+          transparent 16px
+        );
+      --synth-track-border: rgba(148, 163, 184, 0.28);
+      --synth-thumb:
+        linear-gradient(180deg, #f8fafc, #cbd5e1 54%, #94a3b8);
+      --synth-thumb-border: rgba(71, 85, 105, 0.26);
+      --synth-caption: #0f172a;
+      --synth-caption-muted: #64748b;
+      --top-card-bg: linear-gradient(180deg, rgba(59, 130, 246, 0.08), rgba(255, 255, 255, 0.96));
+      --top-rank-bg: rgba(59, 130, 246, 0.12);
+      --table-card-bg: #ffffff;
+    }
+
+    :root[data-theme="dark"] {
+      --builder-bg: #0f172a;
+      --builder-card-bg: #1e293b;
+      --builder-card-bg-strong: #1e293b;
+      --builder-text: #f8fafc;
+      --builder-muted: #94a3b8;
+      --builder-border: rgba(255, 255, 255, 0.1);
+      --builder-shadow: 0 18px 40px rgba(2, 6, 23, 0.38);
+      --builder-panel-bg:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.12), transparent 34%),
+        linear-gradient(180deg, #1e293b, #172131 62%, #111827);
+      --builder-panel-ink: #f8fafc;
+      --builder-panel-border: rgba(255, 255, 255, 0.08);
+      --builder-status-bg: rgba(15, 23, 42, 0.45);
+      --builder-status-border: rgba(148, 163, 184, 0.12);
+      --builder-status-label: #94a3b8;
+      --synth-body:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(15, 23, 42, 0.42)),
+        rgba(15, 23, 42, 0.72);
+      --synth-body-border: rgba(255, 255, 255, 0.08);
+      --synth-screw: rgba(15, 23, 42, 0.55);
+      --synth-readout:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.82));
+      --synth-readout-border: rgba(255, 255, 255, 0.08);
+      --synth-readout-label: rgba(177, 196, 222, 0.72);
+      --synth-readout-value: #8ff4d1;
+      --synth-track:
+        linear-gradient(180deg, rgba(248, 250, 252, 0.10), rgba(15, 23, 42, 0.72)),
+        repeating-linear-gradient(
+          to bottom,
+          rgba(148, 163, 184, 0.26) 0,
+          rgba(148, 163, 184, 0.26) 2px,
+          transparent 2px,
+          transparent 16px
+        );
+      --synth-track-border: rgba(255, 255, 255, 0.08);
+      --synth-thumb:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(148, 163, 184, 0.16)),
+        linear-gradient(180deg, #8f99a8, #515d6f 54%, #394354);
+      --synth-thumb-border: rgba(255, 255, 255, 0.16);
+      --synth-caption: #f8fbff;
+      --synth-caption-muted: rgba(200, 214, 234, 0.72);
+      --top-card-bg: linear-gradient(180deg, rgba(15, 23, 42, 0.4), rgba(30, 41, 59, 0.98));
+      --top-rank-bg: rgba(59, 130, 246, 0.18);
+      --table-card-bg: #1e293b;
+    }
+
+    html, body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      background: var(--builder-bg);
+      color: var(--builder-text);
+    }
+
+    .builder-shell {
+      display: grid;
+      grid-template-columns: minmax(420px, 560px) minmax(320px, 1fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .builder-panel,
+    .radar-panel {
+      position: relative;
+      overflow: hidden;
+      border-radius: 22px;
+      border: 1px solid var(--builder-border);
+      box-shadow: var(--builder-shadow);
+    }
+
+    .builder-panel {
+      background: var(--builder-panel-bg);
+      color: var(--builder-panel-ink);
+    }
+
+    .builder-panel::before {
+      content: "";
+      position: absolute;
+      inset: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--builder-panel-border);
+      pointer-events: none;
+    }
+
+    .radar-panel {
+      background: linear-gradient(180deg, var(--builder-card-bg), color-mix(in srgb, var(--builder-card-bg) 92%, #3b82f6 8%));
+      padding: 22px;
+    }
+
+    .builder-header,
+    .radar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .builder-header {
+      padding: 22px 22px 10px;
+    }
+
+    .builder-kicker,
+    .radar-kicker {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .builder-kicker {
+      color: var(--builder-status-label);
+    }
+
+    .radar-kicker {
+      color: var(--builder-muted);
+    }
+
+    .builder-title,
+    .radar-title {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.05;
+    }
+
+    .builder-copy,
+    .radar-copy {
+      margin: 8px 0 0;
+      max-width: 52ch;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .builder-copy {
+      color: color-mix(in srgb, var(--builder-panel-ink) 74%, transparent);
+    }
+
+    .radar-copy {
+      color: var(--builder-muted);
+    }
+
+    .reset-button {
+      border: 1px solid var(--builder-border);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--builder-card-bg) 78%, #3b82f6 22%);
+      color: var(--builder-text);
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .reset-button:hover,
+    .reset-button:focus-visible {
+      background: color-mix(in srgb, var(--builder-card-bg) 66%, #3b82f6 34%);
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    .fader-bank {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 12px;
+      padding: 0 18px 22px;
+      align-items: end;
+    }
+
+    .fader-card {
+      position: relative;
+      min-height: 430px;
+      border-radius: 18px;
+      padding: 14px 10px 12px;
+      background: var(--synth-body);
+      border: 1px solid var(--synth-body-border);
+      box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--builder-card-bg) 70%, transparent),
+        inset 0 -12px 28px rgba(15, 23, 42, 0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .fader-readout {
+      width: 100%;
+      border-radius: 12px;
+      padding: 9px 8px 8px;
+      background: var(--synth-readout);
+      border: 1px solid var(--synth-readout-border);
+      text-align: center;
+      box-shadow: inset 0 0 18px rgba(59, 130, 246, 0.08);
+    }
+
+    .fader-readout-label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--synth-readout-label);
+    }
+
+    .fader-readout-value {
+      display: block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--synth-readout-value);
+      text-shadow: 0 0 14px color-mix(in srgb, var(--synth-readout-value) 24%, transparent);
+    }
+
+    .fader-track-wrap {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fader-meter {
+      position: absolute;
+      top: 16px;
+      bottom: 16px;
+      left: 50%;
+      width: 20px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: var(--synth-track);
+      border: 1px solid var(--synth-track-border);
+      box-shadow:
+        inset 0 0 0 2px color-mix(in srgb, var(--builder-bg) 50%, transparent),
+        inset 0 14px 20px color-mix(in srgb, var(--builder-card-bg) 42%, transparent),
+        inset 0 -18px 24px rgba(15, 23, 42, 0.14);
+      pointer-events: none;
+    }
+
+    .fader-range {
+      position: relative;
+      z-index: 1;
+      width: 290px;
+      height: 32px;
+      transform: rotate(-90deg);
+      transform-origin: center;
+      appearance: none;
+      background: transparent;
+      cursor: ns-resize;
+    }
+
+    .fader-range:focus {
+      outline: none;
+    }
+
+    .fader-range::-webkit-slider-runnable-track {
+      height: 18px;
+      border-radius: 999px;
+      background:
+        linear-gradient(90deg, rgba(59, 130, 246, 0.10), rgba(45, 212, 191, 0.16)),
+        repeating-linear-gradient(
+          to right,
+          rgba(148, 163, 184, 0.26) 0,
+          rgba(148, 163, 184, 0.26) 2px,
+          transparent 2px,
+          transparent 16px
+        );
+      border: 1px solid var(--synth-track-border);
+      box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--builder-bg) 50%, transparent);
+    }
+
+    .fader-range::-webkit-slider-thumb {
+      appearance: none;
+      width: 42px;
+      height: 30px;
+      margin-top: -7px;
+      border-radius: 10px;
+      border: 1px solid var(--synth-thumb-border);
+      background: var(--synth-thumb);
+      box-shadow:
+        inset 0 2px 2px color-mix(in srgb, var(--builder-card-bg) 70%, transparent),
+        inset 0 -4px 8px rgba(15, 23, 42, 0.18),
+        0 10px 16px rgba(15, 23, 42, 0.18);
+    }
+
+    .fader-range::-moz-range-track {
+      height: 18px;
+      border-radius: 999px;
+      background:
+        linear-gradient(90deg, rgba(59, 130, 246, 0.10), rgba(45, 212, 191, 0.16)),
+        repeating-linear-gradient(
+          to right,
+          rgba(148, 163, 184, 0.26) 0,
+          rgba(148, 163, 184, 0.26) 2px,
+          transparent 2px,
+          transparent 16px
+        );
+      border: 1px solid var(--synth-track-border);
+      box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--builder-bg) 50%, transparent);
+    }
+
+    .fader-range::-moz-range-thumb {
+      width: 42px;
+      height: 30px;
+      border-radius: 10px;
+      border: 1px solid var(--synth-thumb-border);
+      background: var(--synth-thumb);
+      box-shadow:
+        inset 0 2px 2px color-mix(in srgb, var(--builder-card-bg) 70%, transparent),
+        inset 0 -4px 8px rgba(15, 23, 42, 0.18),
+        0 10px 16px rgba(15, 23, 42, 0.18);
+    }
+
+    .fader-caption {
+      width: 100%;
+      text-align: center;
+      min-height: 104px;
+    }
+
+    .fader-title {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: 0.01em;
+      color: var(--synth-caption);
+      text-wrap: balance;
+    }
+
+    .fader-description {
+      display: block;
+      margin-top: 6px;
+      font-size: 10px;
+      line-height: 1.35;
+      color: var(--synth-caption-muted);
+      text-wrap: balance;
+    }
+
+    .radar-top-three {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 16px 0 10px;
+    }
+
+    .radar-top-card {
+      border-radius: 16px;
+      border: 1px solid var(--builder-border);
+      background: var(--top-card-bg);
+      padding: 14px;
+    }
+
+    .radar-top-rank {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+      background: var(--top-rank-bg);
+      color: #3b82f6;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .radar-top-model {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .radar-top-score {
+      margin: 7px 0 0;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .radar-top-meta {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .builder-radar {
+      width: 100%;
+      height: 460px;
+      margin-top: 10px;
+    }
+
+    .leaderboard-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin: 14px 0 20px;
+    }
+
+    .leaderboard-card {
+      border-radius: 16px;
+      border: 1px solid var(--builder-border);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--table-card-bg) 94%, #3b82f6 6%), var(--table-card-bg));
+      padding: 16px;
+    }
+
+    .leaderboard-rank {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--top-rank-bg);
+      color: #3b82f6;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .leaderboard-model {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .leaderboard-score {
+      margin: 6px 0 0;
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .leaderboard-meta {
+      margin: 8px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .method-callout {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--builder-border);
+      background: color-mix(in srgb, var(--builder-card-bg) 90%, #3b82f6 10%);
+    }
+
+    .method-callout p {
+      margin: 0;
+    }
+
+    @media (max-width: 1100px) {
+      .builder-shell {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .builder-title,
+      .radar-title {
+        font-size: 22px;
+      }
+
+      .fader-bank {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .fader-card {
+        min-height: 370px;
+      }
+
+      .fader-range {
+        width: 240px;
+      }
+
+      .builder-radar {
+        height: 380px;
+      }
+
+      .radar-top-three {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .fader-bank {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .fader-card {
+        min-height: 340px;
+      }
+
+      .fader-range {
+        width: 210px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="docs-nav">
+    <a href="/" class="docs-nav-back">← App</a>
+    <div class="docs-nav-links">
+      <a href="/docs/index.html">Home</a>
+    </div>
+  </nav>
+
+  <main class="docs-content" style="max-width:1380px;">
+    <header class="docs-header">
+      <h1>Benchmark Builder</h1>
+      <p>Build your own benchmark weighting with the guided report’s seven coupled faders. Every move preserves a locked 100% total, updates the radar instantly, and re-ranks the available model pool live.</p>
+    </header>
+
+    <section class="docs-section">
+      <div class="builder-shell">
+        <div class="builder-panel">
+          <div class="builder-header">
+            <div>
+              <span class="builder-kicker">Seven-Axis Mixer</span>
+              <h2 class="builder-title">Your benchmark profile</h2>
+              <p class="builder-copy">The faders start evenly split across the guided report’s seven axes. Pull any axis up or down and the remaining six compensate in real time so the overall benchmark budget always stays at 100%.</p>
+            </div>
+            <button id="resetWeights" class="reset-button" type="button">Reset 1/7</button>
+          </div>
+
+          <div id="faderBank" class="fader-bank" aria-label="Benchmark axis weights"></div>
+        </div>
+
+        <div class="radar-panel">
+          <div class="radar-header">
+            <div>
+              <span class="radar-kicker">Live Radar</span>
+              <h2 class="radar-title">Weight distribution</h2>
+              <p class="radar-copy">The radar labels update with the live percentages, and the polygon redraws on every fader movement.</p>
+            </div>
+          </div>
+          <div id="radarTopThree" class="radar-top-three" role="status" aria-live="polite"></div>
+          <div id="weightRadar" class="builder-radar" aria-label="Benchmark weight radar chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="docs-section">
+      <h2>Live Ranking</h2>
+      <p>The table below shows all available models under your current seven-axis mix, using the full published model pool available in the benchmark reports.</p>
+      <div class="docs-table-wrap">
+        <table class="docs-table compact-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Model</th>
+              <th>Weighted Score</th>
+              <th>TTFT</th>
+              <th>Throughput</th>
+              <th>Math</th>
+              <th>Reasoning</th>
+              <th>Instruction</th>
+              <th>Chat UX</th>
+              <th>Thermal</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </div>
+      <div class="method-callout">
+        <p><strong>Method:</strong> each model score is the weighted average of <code>TTFT</code>, <code>Throughput</code>, <code>Math</code>, <code>Reasoning</code>, <code>Instruction</code>, <code>Chat UX</code>, and <code>Thermal</code>. The pool merges the published model vectors from <a href="/docs/benchmark_guided.html">Benchmark Report (Guided)</a> and <a href="/docs/benchmark_update_spring_26.html">Benchmark Update Spring '26</a>, so DeepSeek and GPT-OSS are included alongside Gemma and Qwen.</p>
+      </div>
+    </section>
+
+    <footer class="docs-footer"></footer>
+  </main>
+
+  <script src="/js/echarts.min.js"></script>
+  <script>
+    (function(){
+      const axes = [
+        { id: 'ttft', label: 'TTFT', short: 'TTFT', note: 'First token', accent: '#f97316' },
+        { id: 'throughput', label: 'Throughput', short: 'TPS', note: 'Tokens/sec', accent: '#fb7185' },
+        { id: 'math', label: 'Math', short: 'MTH', note: 'CS + Physics', accent: '#22c55e' },
+        { id: 'reasoning', label: 'Reasoning', short: 'RSN', note: 'Logic depth', accent: '#0ea5e9' },
+        { id: 'instruction', label: 'Instruction', short: 'INS', note: 'Prompt fit', accent: '#8b5cf6' },
+        { id: 'chatUx', label: 'Chat UX', short: 'CHAT', note: 'Conversation', accent: '#ec4899' },
+        { id: 'thermal', label: 'Thermal', short: 'THERM', note: 'Lower is better', accent: '#14b8a6' }
+      ];
+
+      const availableModels = [
+        { name: 'gemma3:12b', color: '#ef4444', ttft: 99.7, throughput: 30.3, math: 75.0, reasoning: 60.0, instruction: 70.0, chatUx: 86.7, thermal: 100.0 },
+        { name: 'gemma3:4b', color: '#22c55e', ttft: 100.0, throughput: 100.0, math: 55.0, reasoning: 60.0, instruction: 60.0, chatUx: 76.7, thermal: 99.4 },
+        { name: 'gemma4:26b', color: '#f97316', ttft: 0.0, throughput: 17.8, math: 75.0, reasoning: 70.0, instruction: 40.0, chatUx: 76.7, thermal: 44.3 },
+        { name: 'gemma4:latest', color: '#fb7185', ttft: 84.5, throughput: 55.5, math: 70.0, reasoning: 70.0, instruction: 60.0, chatUx: 76.7, thermal: 28.8 },
+        { name: 'deepseek-r1:8b', color: '#3b82f6', ttft: 51.8, throughput: 26.4, math: 55.0, reasoning: 45.0, instruction: 70.0, chatUx: 83.3, thermal: 10.9 },
+        { name: 'deepseek-r1:14b', color: '#6366f1', ttft: 43.0, throughput: 3.3, math: 15.0, reasoning: 30.0, instruction: 80.0, chatUx: 63.3, thermal: 4.3 },
+        { name: 'gpt-oss:20b', color: '#f59e0b', ttft: 5.5, throughput: 33.2, math: 65.0, reasoning: 60.0, instruction: 70.0, chatUx: 80.0, thermal: 65.2 },
+        { name: 'qwen3.5:4b', color: '#0ea5e9', ttft: 37.6, throughput: 3.8, math: 65.0, reasoning: 15.0, instruction: 40.0, chatUx: 76.7, thermal: 5.3 },
+        { name: 'qwen3.5:9b', color: '#6366f1', ttft: 59.9, throughput: 0.0, math: 65.0, reasoning: 35.0, instruction: 30.0, chatUx: 73.3, thermal: 0.0 },
+        { name: 'qwen3:14b', color: '#a855f7', ttft: 0.0, throughput: 0.0, math: 55.0, reasoning: 40.0, instruction: 60.0, chatUx: 70.0, thermal: 0.0 },
+        { name: 'qwen3:4b', color: '#14b8a6', ttft: 87.9, throughput: 42.8, math: 55.0, reasoning: 50.0, instruction: 50.0, chatUx: 53.3, thermal: 44.8 },
+        { name: 'qwen3:8b', color: '#8b5cf6', ttft: 87.7, throughput: 22.3, math: 60.0, reasoning: 50.0, instruction: 50.0, chatUx: 60.0, thermal: 35.9 }
+      ];
+
+      const defaultWeight = 100 / axes.length;
+      let weights = axes.map(() => defaultWeight);
+      let radarChart = null;
+
+      const faderBank = document.getElementById('faderBank');
+      const leaderboardBody = document.getElementById('leaderboardBody');
+      const radarTopThree = document.getElementById('radarTopThree');
+      const resetButton = document.getElementById('resetWeights');
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function round(value, digits) {
+        const factor = Math.pow(10, digits);
+        return Math.round(value * factor) / factor;
+      }
+
+      function formatPct(value) {
+        return Math.round(value) + '%';
+      }
+
+      function sum(values) {
+        return values.reduce((total, value) => total + value, 0);
+      }
+
+      function distribute(arr, indices, delta, mode) {
+        let remaining = delta;
+        let guard = 0;
+
+        while (remaining > 1e-8 && guard < 12) {
+          const active = indices.filter((index) => {
+            if (mode === 'subtract') return arr[index] > 1e-8;
+            return (100 - arr[index]) > 1e-8;
+          });
+
+          if (!active.length) break;
+
+          const totalCapacity = active.reduce((total, index) => {
+            return total + (mode === 'subtract' ? arr[index] : (100 - arr[index]));
+          }, 0);
+
+          if (totalCapacity <= 1e-8) break;
+
+          let applied = 0;
+          active.forEach((index) => {
+            const capacity = mode === 'subtract' ? arr[index] : (100 - arr[index]);
+            const share = remaining * (capacity / totalCapacity);
+            const amount = Math.min(capacity, share);
+            if (mode === 'subtract') arr[index] -= amount;
+            else arr[index] += amount;
+            applied += amount;
+          });
+
+          remaining -= applied;
+          guard += 1;
+          if (applied <= 1e-8) break;
+        }
+      }
+
+      function normalizeWeights(arr, preferredIndex) {
+        const diff = 100 - sum(arr);
+        if (Math.abs(diff) <= 1e-7) return;
+        const ordered = [preferredIndex].concat(arr.map((_, index) => index).filter((index) => index !== preferredIndex));
+        for (const index of ordered) {
+          const next = arr[index] + diff;
+          if (next >= -1e-7 && next <= 100 + 1e-7) {
+            arr[index] = clamp(next, 0, 100);
+            return;
+          }
+        }
+      }
+
+      function setWeight(index, desiredValue) {
+        const next = weights.slice();
+        const currentValue = next[index];
+        const desired = clamp(desiredValue, 0, 100);
+        if (Math.abs(desired - currentValue) <= 1e-8) return;
+
+        const otherIndices = next.map((_, axisIndex) => axisIndex).filter((axisIndex) => axisIndex !== index);
+        if (desired > currentValue) {
+          const delta = Math.min(desired - currentValue, sum(otherIndices.map((axisIndex) => next[axisIndex])));
+          distribute(next, otherIndices, delta, 'subtract');
+          next[index] = currentValue + delta;
+        } else {
+          const delta = currentValue - desired;
+          distribute(next, otherIndices, delta, 'add');
+          next[index] = currentValue - delta;
+        }
+
+        normalizeWeights(next, index);
+        weights = next.map((value) => clamp(value, 0, 100));
+      }
+
+      function getRanking() {
+        return availableModels.map((model) => {
+          const profile = [
+            model.ttft,
+            model.throughput,
+            model.math,
+            model.reasoning,
+            model.instruction,
+            model.chatUx,
+            model.thermal
+          ];
+          const score = profile.reduce((total, value, index) => total + (value * weights[index] / 100), 0);
+          return {
+            ...model,
+            profile,
+            score: round(score, 2)
+          };
+        }).sort((left, right) => right.score - left.score);
+      }
+
+      function buildFaders() {
+        faderBank.innerHTML = axes.map((axis, index) => `
+          <div class="fader-card">
+            <div class="fader-readout">
+              <span class="fader-readout-label">${axis.short}</span>
+              <span class="fader-readout-value" data-readout="${index}">${formatPct(weights[index])}</span>
+            </div>
+            <div class="fader-track-wrap">
+              <div class="fader-meter" style="box-shadow: inset 0 0 0 2px rgba(15, 23, 42, 0.26), inset 0 14px 20px rgba(255, 255, 255, 0.04), inset 0 -18px 24px rgba(0, 0, 0, 0.26), 0 0 0 1px ${axis.accent}33;"></div>
+              <input
+                class="fader-range"
+                type="range"
+                min="0"
+                max="100"
+                step="0.01"
+                value="${weights[index]}"
+                aria-label="${axis.label} weight"
+                data-index="${index}">
+            </div>
+            <div class="fader-caption">
+              <span class="fader-title">${axis.label}</span>
+              <span class="fader-description">${axis.note}</span>
+            </div>
+          </div>
+        `).join('');
+
+        faderBank.querySelectorAll('.fader-range').forEach((input) => {
+          input.addEventListener('input', (event) => {
+            const index = Number.parseInt(event.currentTarget.dataset.index || '0', 10);
+            const value = Number.parseFloat(event.currentTarget.value || '0');
+            setWeight(index, value);
+            render();
+          });
+        });
+      }
+
+      function getRadarTheme() {
+        const styles = getComputedStyle(document.documentElement);
+        const isDark = document.documentElement.classList.contains('dark');
+        return {
+          text: styles.getPropertyValue('--ink').trim() || (isDark ? '#f8fafc' : '#0f172a'),
+          muted: styles.getPropertyValue('--muted').trim() || (isDark ? '#94a3b8' : '#64748b'),
+          border: styles.getPropertyValue('--border').trim() || (isDark ? '#334155' : '#cbd5e1'),
+          accent: styles.getPropertyValue('--accent').trim() || '#0ea5e9',
+          panel: styles.getPropertyValue('--panel').trim() || (isDark ? '#111827' : '#ffffff')
+        };
+      }
+
+      function renderRadar(ranking) {
+        const radarEl = document.getElementById('weightRadar');
+        if (!radarEl || typeof echarts === 'undefined') return;
+        if (!radarChart) radarChart = echarts.init(radarEl);
+
+        const theme = getRadarTheme();
+        const maxWeight = Math.max(25, Math.ceil(Math.max.apply(null, weights) / 5) * 5);
+        const weightSeries = weights.map((value) => Math.round(value));
+        radarChart.setOption({
+          animationDuration: 180,
+          animationDurationUpdate: 180,
+          backgroundColor: 'transparent',
+          tooltip: {
+            trigger: 'item',
+            formatter: function(params) {
+              const values = params.value || [];
+              return values.map((value, index) => `${axes[index].label}: ${formatPct(value)}`).join('<br>');
+            }
+          },
+          radar: {
+            center: ['50%', '50%'],
+            radius: '68%',
+            splitNumber: 5,
+            axisName: {
+              color: theme.text,
+              fontSize: 12,
+              fontWeight: 600,
+              lineHeight: 18
+            },
+            axisLine: {
+              lineStyle: {
+                color: theme.border
+              }
+            },
+            splitLine: {
+              lineStyle: {
+                color: theme.border
+              }
+            },
+            splitArea: {
+              areaStyle: {
+                color: [
+                  'rgba(14,165,233,0.05)',
+                  'rgba(14,165,233,0.02)'
+                ]
+              }
+            },
+            indicator: axes.map((axis, index) => ({
+              name: axis.label + '\n' + formatPct(weights[index]),
+              max: maxWeight
+            }))
+          },
+          series: [{
+            type: 'radar',
+            symbol: 'circle',
+            symbolSize: 8,
+            lineStyle: {
+              width: 3,
+              color: theme.accent
+            },
+            itemStyle: {
+              color: theme.accent
+            },
+            areaStyle: {
+              color: 'rgba(14,165,233,0.26)'
+            },
+            data: [{
+              value: weightSeries,
+              name: 'Weight mix'
+            }]
+          }]
+        });
+
+        radarTopThree.innerHTML = ranking.slice(0, 3).map((item, index) => `
+          <article class="radar-top-card">
+            <div class="radar-top-rank">#${index + 1}</div>
+            <h3 class="radar-top-model" style="color:${item.color};">${item.name}</h3>
+            <p class="radar-top-score">${item.score.toFixed(1)}</p>
+            <p class="radar-top-meta">TTFT ${item.ttft.toFixed(1)} · Chat ${item.chatUx.toFixed(1)}</p>
+          </article>
+        `).join('');
+      }
+
+      function renderRanking(ranking) {
+        leaderboardBody.innerHTML = ranking.map((item, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td><strong style="color:${item.color};">${item.name}</strong></td>
+            <td><strong>${item.score.toFixed(1)}</strong></td>
+            <td>${item.ttft.toFixed(1)}</td>
+            <td>${item.throughput.toFixed(1)}</td>
+            <td>${item.math.toFixed(1)}</td>
+            <td>${item.reasoning.toFixed(1)}</td>
+            <td>${item.instruction.toFixed(1)}</td>
+            <td>${item.chatUx.toFixed(1)}</td>
+            <td>${item.thermal.toFixed(1)}</td>
+          </tr>
+        `).join('');
+      }
+
+      function render() {
+        const readouts = faderBank.querySelectorAll('[data-readout]');
+        const inputs = faderBank.querySelectorAll('.fader-range');
+        readouts.forEach((element, index) => {
+          element.textContent = formatPct(weights[index]);
+        });
+        inputs.forEach((input, index) => {
+          input.value = String(weights[index]);
+        });
+        const ranking = getRanking();
+        renderRadar(ranking);
+        renderRanking(ranking);
+      }
+
+      resetButton.addEventListener('click', () => {
+        weights = axes.map(() => defaultWeight);
+        render();
+      });
+
+      buildFaders();
+      render();
+      window.addEventListener('resize', () => {
+        if (radarChart) radarChart.resize();
+      });
+
+      const themeObserver = new MutationObserver(() => {
+        render();
+      });
+      themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'data-theme']
+      });
+    })();
+  </script>
+  <script src="/js/docs_theme.js"></script>
+</body>
+</html>

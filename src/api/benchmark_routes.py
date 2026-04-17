@@ -176,6 +176,292 @@ def _normalize_since(value: str | None) -> str | None:
     return ts.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def _normalize_task_status(raw_status: str | None) -> str:
+    status = (raw_status or "pending").lower()
+    if status == "passed":
+        return "pass"
+    if status == "failed":
+        return "fail"
+    if status == "error":
+        return "error"
+    return status
+
+
+def _build_task_stub_payload(task_row: sqlite3.Row) -> dict[str, Any]:
+    task_kind = task_row["task_kind"] or "shortform"
+    metrics: dict[str, Any] = {
+        "attempt": _row_value(task_row, "attempt"),
+        "max_retries": _row_value(task_row, "max_retries"),
+    }
+    payload: dict[str, Any] = {
+        "kind": task_kind,
+        "model_name": task_row["model_name"],
+        "dataset_id": task_row["dataset_name"],
+        "dataset_label": _normalize_dataset_label(task_row["dataset_name"]) or task_row["dataset_name"],
+        "created_at": task_row["completed_at"] or task_row["started_at"] or task_row["created_at"],
+        "status": _normalize_task_status(task_row["status"]),
+        "error": task_row["error"],
+        "metrics": metrics,
+        "evaluation": {},
+        "payload": {},
+        "aggregate": {},
+        "workflow": _build_task_workflow(task_row, metrics),
+    }
+    if task_kind == "chat":
+        payload["dialog_id"] = task_row["dialog_id"]
+        payload["turn_index"] = task_row["turn_index"]
+    else:
+        payload["task_name"] = task_row["dataset_name"]
+        payload["sample_id"] = task_row["sample_id"]
+    return payload
+
+
+def _duration_seconds(start_value: str | None, end_value: str | None) -> float | None:
+    start = _parse_timestamp(start_value)
+    end = _parse_timestamp(end_value)
+    if not start or not end:
+        return None
+    try:
+        return max(0.0, (end - start).total_seconds())
+    except TypeError:
+        return None
+
+
+def _workflow_stage(
+    status: str,
+    time_sec: float | None = None,
+    live: bool = False,
+    source: str | None = None,
+) -> dict[str, Any]:
+    return {"status": status, "time": time_sec, "live": live, "source": source}
+
+
+def _build_task_workflow(task_row: sqlite3.Row, metrics: dict[str, Any] | None) -> dict[str, Any]:
+    metrics = metrics or {}
+    task_status = _normalize_task_status(task_row["status"])
+    started_at = _row_value(task_row, "started_at")
+    completed_at = _row_value(task_row, "completed_at")
+    first_token_at = _row_value(task_row, "first_token_at")
+    streaming_completed_at = _row_value(task_row, "streaming_completed_at") or completed_at
+    evaluation_started_at = _row_value(task_row, "evaluation_started_at")
+    evaluation_completed_at = _row_value(task_row, "evaluation_completed_at")
+    cooling_started_at = _row_value(task_row, "cooling_started_at")
+    cooling_completed_at = _row_value(task_row, "cooling_completed_at")
+
+    workflow = {
+        "cooling": _workflow_stage("unavailable", source="not_stored"),
+        "thinking": _workflow_stage("unavailable", source="not_stored"),
+        "streaming": _workflow_stage("unavailable", source="not_stored"),
+        "evaluating": _workflow_stage("unavailable", source="not_stored"),
+        "done": _workflow_stage("pending" if task_status in ("pending", "running") else "completed"),
+    }
+
+    cooling_time = _duration_seconds(cooling_started_at, cooling_completed_at)
+    if cooling_started_at and cooling_completed_at:
+        workflow["cooling"] = _workflow_stage("completed", cooling_time, source="stored")
+    elif cooling_started_at:
+        workflow["cooling"] = _workflow_stage("active", live=False, source="stored")
+
+    thinking_time = _duration_seconds(started_at, first_token_at)
+    if thinking_time is not None:
+        workflow["thinking"] = _workflow_stage("completed", thinking_time, source="stored")
+    elif metrics.get("ttft_ms") is not None:
+        workflow["thinking"] = _workflow_stage("completed", max(0.0, float(metrics["ttft_ms"]) / 1000), source="derived")
+
+    streaming_time = _duration_seconds(first_token_at, streaming_completed_at)
+    total_ms = metrics.get("total_time_ms")
+    ttft_ms = metrics.get("ttft_ms")
+    if streaming_time is not None:
+        workflow["streaming"] = _workflow_stage("completed", streaming_time, source="stored")
+    elif total_ms is not None and ttft_ms is not None:
+        workflow["streaming"] = _workflow_stage(
+            "completed",
+            max(0.0, (float(total_ms) - float(ttft_ms)) / 1000),
+            source="derived",
+        )
+
+    evaluating_time = _duration_seconds(evaluation_started_at, evaluation_completed_at)
+    if evaluating_time is not None:
+        workflow["evaluating"] = _workflow_stage("completed", evaluating_time, source="stored")
+
+    if task_status in ("fail", "error"):
+        workflow["done"] = _workflow_stage("failed" if task_status == "error" else "completed")
+    elif task_status in ("pending", "running"):
+        workflow["done"] = _workflow_stage(task_status)
+    else:
+        workflow["done"] = _workflow_stage("completed")
+
+    return workflow
+
+
+def _build_shortform_task_payload(cur: sqlite3.Cursor, run_id: str, task_row: sqlite3.Row) -> dict[str, Any]:
+    cur.execute(
+        "SELECT * FROM benchmark_samples WHERE run_id = ? AND model_name = ? AND task_name = ? AND sample_id = ? "
+        "ORDER BY created_at DESC, id DESC LIMIT 1",
+        (run_id, task_row["model_name"], task_row["dataset_name"], task_row["sample_id"]),
+    )
+    row = cur.fetchone()
+    if not row:
+        return _build_task_stub_payload(task_row)
+
+    cur.execute(
+        "SELECT * FROM benchmark_tasks "
+        "WHERE run_id = ? AND model_name = ? AND task_name = ? "
+        "ORDER BY id DESC LIMIT 1",
+        (run_id, row["model_name"], row["task_name"]),
+    )
+    task_meta = _row_to_dict(cur.fetchone()) or {}
+    metrics = {
+        "ttft_ms": row["ttft_ms"],
+        "tokens_per_sec": row["tokens_per_sec"],
+        "total_time_ms": row["total_time_ms"],
+        "input_tokens": row["input_tokens"],
+        "output_tokens": row["output_tokens"],
+        "timeout_killed": _row_value(row, "timeout_killed"),
+        "timeout_type": _row_value(row, "timeout_type"),
+        "timeout_reason": _row_value(row, "timeout_reason"),
+        "tokens_before_timeout": _row_value(row, "tokens_before_timeout"),
+        "attempt": _row_value(task_row, "attempt"),
+        "max_retries": _row_value(task_row, "max_retries"),
+    }
+    return {
+        "kind": "shortform",
+        "model_name": row["model_name"],
+        "task_name": row["task_name"],
+        "dataset_id": row["task_name"],
+        "dataset_label": _normalize_dataset_label(row["task_name"]) or row["task_name"],
+        "sample_id": row["sample_id"],
+        "created_at": row["created_at"],
+        "status": _normalize_task_status(task_row["status"]),
+        "error": row["error"],
+        "metrics": metrics,
+        "evaluation": {"correct": row["correct"]},
+        "payload": {
+            "prompt_preview": _preview(row["prompt"]),
+            "prompt": row["prompt"],
+            "expected_preview": _preview(row["expected"]),
+            "response_preview": _preview(row["response"]),
+            "response": row["response"],
+            "prompt_len": len(row["prompt"] or ""),
+            "expected_len": len(row["expected"] or ""),
+            "response_len": len(row["response"] or ""),
+        },
+        "aggregate": {
+            "category": task_meta.get("category"),
+            "samples_total": task_meta.get("samples_total"),
+            "samples_correct": task_meta.get("samples_correct"),
+            "accuracy": task_meta.get("accuracy"),
+            "avg_ttft_ms": task_meta.get("avg_ttft_ms"),
+            "avg_tokens_per_sec": task_meta.get("avg_tokens_per_sec"),
+            "avg_total_time_ms": task_meta.get("avg_total_time_ms"),
+            "disk_io_avg_mbps": task_meta.get("disk_io_avg_mbps"),
+            "disk_io_max_mbps": task_meta.get("disk_io_max_mbps"),
+            "gpu_util_avg": task_meta.get("gpu_util_avg"),
+            "gpu_util_max": task_meta.get("gpu_util_max"),
+            "gpu_temp_avg": task_meta.get("gpu_temp_avg"),
+            "gpu_temp_max": task_meta.get("gpu_temp_max"),
+            "cpu_util_avg": task_meta.get("cpu_util_avg"),
+            "cpu_util_max": task_meta.get("cpu_util_max"),
+            "started_at": task_meta.get("started_at"),
+            "completed_at": task_meta.get("completed_at"),
+        },
+        "workflow": _build_task_workflow(task_row, metrics),
+    }
+
+
+def _build_chat_task_payload(cur: sqlite3.Cursor, run_id: str, task_row: sqlite3.Row) -> dict[str, Any]:
+    cur.execute(
+        "SELECT * FROM chat_turns WHERE run_id = ? AND model_name = ? AND dataset = ? AND dialog_id = ? AND turn_index = ? "
+        "ORDER BY created_at DESC, id DESC LIMIT 1",
+        (run_id, task_row["model_name"], task_row["dataset_name"], task_row["dialog_id"], task_row["turn_index"]),
+    )
+    row = cur.fetchone()
+    if not row:
+        cur.execute(
+            "SELECT * FROM chat_turns WHERE run_id = ? AND model_name = ? AND dialog_id = ? AND turn_index = ? "
+            "ORDER BY created_at DESC, id DESC LIMIT 1",
+            (run_id, task_row["model_name"], task_row["dialog_id"], task_row["turn_index"]),
+        )
+        row = cur.fetchone()
+    if not row:
+        return _build_task_stub_payload(task_row)
+
+    compliance = _safe_json(row["compliance_json"])
+    violations = _list_from_json(row["violations"])
+    cur.execute(
+        "SELECT * FROM chat_dialogs "
+        "WHERE run_id = ? AND model_name = ? AND dataset = ? AND dialog_id = ? "
+        "ORDER BY id DESC LIMIT 1",
+        (run_id, row["model_name"], row["dataset"], row["dialog_id"]),
+    )
+    dialog_meta = _row_to_dict(cur.fetchone()) or {}
+    dataset_label = _normalize_dataset_label(row["dataset"]) or row["dataset"]
+    metrics = {
+        "ttft_ms": row["ttft_ms"],
+        "tokens_per_sec": row["tokens_per_sec"],
+        "total_time_ms": row["total_time_ms"],
+        "input_tokens": row["input_tokens"],
+        "output_tokens": row["output_tokens"],
+        "jitter_ms": _row_value(row, "jitter_ms"),
+        "timeout_killed": _row_value(row, "timeout_killed"),
+        "timeout_type": _row_value(row, "timeout_type"),
+        "timeout_reason": _row_value(row, "timeout_reason"),
+        "tokens_before_timeout": _row_value(row, "tokens_before_timeout"),
+        "attempt": _row_value(task_row, "attempt"),
+        "max_retries": _row_value(task_row, "max_retries"),
+    }
+    return {
+        "kind": "chat",
+        "model_name": row["model_name"],
+        "dataset_id": row["dataset"],
+        "dataset_label": dataset_label,
+        "dialog_id": row["dialog_id"],
+        "turn_index": row["turn_index"],
+        "created_at": row["created_at"],
+        "status": _normalize_task_status(task_row["status"]),
+        "error": row["error"],
+        "metrics": metrics,
+        "evaluation": {
+            "compliance": compliance,
+            "violations": violations,
+        },
+        "payload": {
+            "user_preview": _preview(row["user_text"]),
+            "user_text": row["user_text"],
+            "response_preview": _preview(row["response"]),
+            "response": row["response"],
+            "user_len": len(row["user_text"] or ""),
+            "response_len": len(row["response"] or ""),
+        },
+        "aggregate": {
+            "turns_total": dialog_meta.get("turns_total"),
+            "turns_compliant": dialog_meta.get("turns_compliant"),
+            "session_compliant": dialog_meta.get("session_compliant"),
+            "avg_ttft_ms": dialog_meta.get("avg_ttft_ms"),
+            "p95_ttft_ms": dialog_meta.get("p95_ttft_ms"),
+            "avg_tokens_per_sec": dialog_meta.get("avg_tokens_per_sec"),
+            "jitter_ms": dialog_meta.get("jitter_ms"),
+            "late_turn_recall": dialog_meta.get("late_turn_recall"),
+            "disk_io_avg_mbps": dialog_meta.get("disk_io_avg_mbps"),
+            "gpu_util_avg": dialog_meta.get("gpu_util_avg"),
+            "gpu_temp_avg": dialog_meta.get("gpu_temp_avg"),
+            "cpu_util_avg": dialog_meta.get("cpu_util_avg"),
+            "started_at": dialog_meta.get("started_at"),
+            "completed_at": dialog_meta.get("completed_at"),
+        },
+        "workflow": _build_task_workflow(task_row, metrics),
+    }
+
+
+def _build_task_payload(cur: sqlite3.Cursor, run_id: str, task_row: sqlite3.Row | None) -> dict[str, Any] | None:
+    if not task_row:
+        return None
+    task_kind = task_row["task_kind"] or "shortform"
+    if task_kind == "chat":
+        return _build_chat_task_payload(cur, run_id, task_row)
+    return _build_shortform_task_payload(cur, run_id, task_row)
+
+
 def _task_passed_from_compliance(compliance: Any, violations: list[Any], error: str | None) -> bool:
     if error:
         return False
@@ -1007,160 +1293,73 @@ def benchmark_last_task():
         )
         last_task = cur.fetchone()
 
-        if not last_task:
-            payload = None
-        else:
-            task_kind = last_task["task_kind"] or "shortform"
-            raw_status = last_task["status"] or "pending"
-            status = "pass" if raw_status == "passed" else ("fail" if raw_status == "failed" else raw_status)
-            if raw_status == "error":
-                status = "error"
+        payload = _build_task_payload(cur, run_id, last_task)
 
-            if task_kind == "shortform":
-                cur.execute(
-                    "SELECT * FROM benchmark_samples WHERE run_id = ? AND model_name = ? AND task_name = ? AND sample_id = ? "
-                    "ORDER BY created_at DESC, id DESC LIMIT 1",
-                    (run_id, last_task["model_name"], last_task["dataset_name"], last_task["sample_id"]),
-                )
-                row = cur.fetchone()
-                if not row:
-                    payload = None
-                else:
-                    cur.execute(
-                        "SELECT * FROM benchmark_tasks "
-                        "WHERE run_id = ? AND model_name = ? AND task_name = ? "
-                        "ORDER BY id DESC LIMIT 1",
-                        (run_id, row["model_name"], row["task_name"]),
-                    )
-                    task_meta = _row_to_dict(cur.fetchone()) or {}
-                    payload = {
-                        "kind": "shortform",
-                        "model_name": row["model_name"],
-                        "task_name": row["task_name"],
-                        "dataset_label": row["task_name"],
-                        "sample_id": row["sample_id"],
-                        "created_at": row["created_at"],
-                        "status": status,
-                        "error": row["error"],
-                        "metrics": {
-                            "ttft_ms": row["ttft_ms"],
-                            "tokens_per_sec": row["tokens_per_sec"],
-                            "total_time_ms": row["total_time_ms"],
-                            "input_tokens": row["input_tokens"],
-                            "output_tokens": row["output_tokens"],
-                            "timeout_killed": _row_value(row, "timeout_killed"),
-                            "timeout_type": _row_value(row, "timeout_type"),
-                            "timeout_reason": _row_value(row, "timeout_reason"),
-                            "tokens_before_timeout": _row_value(row, "tokens_before_timeout"),
-                        },
-                        "evaluation": {"correct": row["correct"]},
-                        "payload": {
-                            "prompt_preview": _preview(row["prompt"]),
-                            "prompt": row["prompt"],  # Full prompt
-                            "expected_preview": _preview(row["expected"]),
-                            "response_preview": _preview(row["response"]),
-                            "response": row["response"],  # Full response
-                            "prompt_len": len(row["prompt"] or ""),
-                            "expected_len": len(row["expected"] or ""),
-                            "response_len": len(row["response"] or ""),
-                        },
-                        "aggregate": {
-                            "category": task_meta.get("category"),
-                            "samples_total": task_meta.get("samples_total"),
-                            "samples_correct": task_meta.get("samples_correct"),
-                            "accuracy": task_meta.get("accuracy"),
-                            "avg_ttft_ms": task_meta.get("avg_ttft_ms"),
-                            "avg_tokens_per_sec": task_meta.get("avg_tokens_per_sec"),
-                            "avg_total_time_ms": task_meta.get("avg_total_time_ms"),
-                            "disk_io_avg_mbps": task_meta.get("disk_io_avg_mbps"),
-                            "disk_io_max_mbps": task_meta.get("disk_io_max_mbps"),
-                            "gpu_util_avg": task_meta.get("gpu_util_avg"),
-                            "gpu_util_max": task_meta.get("gpu_util_max"),
-                            "gpu_temp_avg": task_meta.get("gpu_temp_avg"),
-                            "gpu_temp_max": task_meta.get("gpu_temp_max"),
-                            "cpu_util_avg": task_meta.get("cpu_util_avg"),
-                            "cpu_util_max": task_meta.get("cpu_util_max"),
-                            "started_at": task_meta.get("started_at"),
-                            "completed_at": task_meta.get("completed_at"),
-                        },
-                    }
-            else:
-                cur.execute(
-                    "SELECT * FROM chat_turns WHERE run_id = ? AND model_name = ? AND dataset = ? AND dialog_id = ? AND turn_index = ? "
-                    "ORDER BY created_at DESC, id DESC LIMIT 1",
-                    (run_id, last_task["model_name"], last_task["dataset_name"], last_task["dialog_id"], last_task["turn_index"]),
-                )
-                row = cur.fetchone()
-                if not row:
-                    cur.execute(
-                        "SELECT * FROM chat_turns WHERE run_id = ? AND model_name = ? AND dialog_id = ? AND turn_index = ? "
-                        "ORDER BY created_at DESC, id DESC LIMIT 1",
-                        (run_id, last_task["model_name"], last_task["dialog_id"], last_task["turn_index"]),
-                    )
-                    row = cur.fetchone()
-                if not row:
-                    payload = None
-                else:
-                    compliance = _safe_json(row["compliance_json"])
-                    violations = _list_from_json(row["violations"])
-                    cur.execute(
-                        "SELECT * FROM chat_dialogs "
-                        "WHERE run_id = ? AND model_name = ? AND dataset = ? AND dialog_id = ? "
-                        "ORDER BY id DESC LIMIT 1",
-                        (run_id, row["model_name"], row["dataset"], row["dialog_id"]),
-                    )
-                    dialog_meta = _row_to_dict(cur.fetchone()) or {}
-                    dataset_label = _normalize_dataset_label(row["dataset"]) or row["dataset"]
-                    payload = {
-                        "kind": "chat",
-                        "model_name": row["model_name"],
-                        "dataset_id": row["dataset"],
-                        "dataset_label": dataset_label,
-                        "dialog_id": row["dialog_id"],
-                        "turn_index": row["turn_index"],
-                        "created_at": row["created_at"],
-                        "status": status,
-                        "error": row["error"],
-                        "metrics": {
-                            "ttft_ms": row["ttft_ms"],
-                            "tokens_per_sec": row["tokens_per_sec"],
-                            "total_time_ms": row["total_time_ms"],
-                            "input_tokens": row["input_tokens"],
-                            "output_tokens": row["output_tokens"],
-                            "jitter_ms": _row_value(row, "jitter_ms"),
-                            "timeout_killed": _row_value(row, "timeout_killed"),
-                            "timeout_type": _row_value(row, "timeout_type"),
-                            "timeout_reason": _row_value(row, "timeout_reason"),
-                            "tokens_before_timeout": _row_value(row, "tokens_before_timeout"),
-                        },
-                        "evaluation": {
-                            "compliance": compliance,
-                            "violations": violations,
-                        },
-                        "payload": {
-                            "user_preview": _preview(row["user_text"]),
-                            "user_text": row["user_text"],  # Full user text
-                            "response_preview": _preview(row["response"]),
-                            "response": row["response"],  # Full response
-                            "user_len": len(row["user_text"] or ""),
-                            "response_len": len(row["response"] or ""),
-                        },
-                        "aggregate": {
-                            "turns_total": dialog_meta.get("turns_total"),
-                            "turns_compliant": dialog_meta.get("turns_compliant"),
-                            "session_compliant": dialog_meta.get("session_compliant"),
-                            "avg_ttft_ms": dialog_meta.get("avg_ttft_ms"),
-                            "p95_ttft_ms": dialog_meta.get("p95_ttft_ms"),
-                            "avg_tokens_per_sec": dialog_meta.get("avg_tokens_per_sec"),
-                            "jitter_ms": dialog_meta.get("jitter_ms"),
-                            "late_turn_recall": dialog_meta.get("late_turn_recall"),
-                            "disk_io_avg_mbps": dialog_meta.get("disk_io_avg_mbps"),
-                            "gpu_util_avg": dialog_meta.get("gpu_util_avg"),
-                            "gpu_temp_avg": dialog_meta.get("gpu_temp_avg"),
-                            "cpu_util_avg": dialog_meta.get("cpu_util_avg"),
-                            "started_at": dialog_meta.get("started_at"),
-                            "completed_at": dialog_meta.get("completed_at"),
-                        },
-                    }
+    return jsonify({"ok": True, "run": run_info, "task": payload})
+
+
+@benchmark_bp.get("/api/benchmark/task_detail")
+def benchmark_task_detail():
+    """Return one task detail payload for a specific task identity within a run."""
+    run_id = (request.args.get("run_id") or "").strip()
+    model_name = (request.args.get("model") or request.args.get("model_name") or "").strip()
+    dataset_name = (request.args.get("dataset") or request.args.get("dataset_name") or "").strip()
+    task_name = (request.args.get("task_name") or "").strip()
+    sample_id = (request.args.get("sample_id") or "").strip()
+    dialog_id = (request.args.get("dialog_id") or "").strip()
+    turn_index_raw = (request.args.get("turn_index") or "").strip()
+    turn_index = int(turn_index_raw) if turn_index_raw.isdigit() else None
+    db_path = _db_path()
+    if not os.path.exists(db_path):
+        return jsonify({"ok": False, "error": "benchmark_db_missing", "db_path": db_path}), 404
+
+    if not model_name or not dataset_name:
+        return jsonify({"ok": False, "error": "missing_task_identity"}), 400
+
+    with _connect_db() as conn:
+        cur = conn.cursor()
+        if not run_id:
+            row = _select_default_run(cur)
+            if not row:
+                return jsonify({"ok": False, "error": "no_runs_found"}), 404
+            run_id = row["run_id"]
+            run_info = _row_to_dict(row)
+        else:
+            cur.execute(
+                "SELECT run_id, started_at, completed_at, status "
+                "FROM benchmark_runs WHERE run_id = ? LIMIT 1",
+                (run_id,),
+            )
+            run_info = _row_to_dict(cur.fetchone())
+            if not run_info:
+                return jsonify({"ok": False, "error": "run_not_found", "run_id": run_id}), 404
+
+        query = [
+            "SELECT * FROM benchmark_run_tasks",
+            "WHERE run_id = ? AND model_name = ? AND dataset_name = ?",
+        ]
+        params: list[Any] = [run_id, model_name, dataset_name]
+        if sample_id:
+            query.append("AND sample_id = ?")
+            params.append(sample_id)
+        elif dialog_id and turn_index is not None:
+            query.append("AND dialog_id = ? AND turn_index = ?")
+            params.extend([dialog_id, turn_index])
+        elif dialog_id:
+            query.append("AND dialog_id = ?")
+            params.append(dialog_id)
+        elif task_name:
+            query.append("AND task_name = ?")
+            params.append(task_name)
+        else:
+            return jsonify({"ok": False, "error": "missing_task_identity"}), 400
+
+        query.append("ORDER BY completed_at DESC, started_at DESC, task_index ASC LIMIT 1")
+        cur.execute(" ".join(query), params)
+        task_row = cur.fetchone()
+        if not task_row:
+            return jsonify({"ok": False, "error": "task_not_found", "run_id": run_id}), 404
+
+        payload = _build_task_payload(cur, run_id, task_row)
 
     return jsonify({"ok": True, "run": run_info, "task": payload})

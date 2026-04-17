@@ -1,5 +1,7 @@
 export OLLAMA_KEEP_ALIVE=-1
-cd /Users/sevi/local-chat
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd -P)"
+APP_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
+cd "$APP_DIR"
 ./scripts/run.sh stop
 rm -f ./log/*
 ./scripts/run.sh start

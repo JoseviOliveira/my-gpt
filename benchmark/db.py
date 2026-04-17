@@ -128,6 +128,18 @@ class DBMixin:
         }
         add_columns("benchmark_run_datasets", dataset_columns)
 
+        run_task_columns = {
+            "first_token_at": "TEXT",
+            "streaming_completed_at": "TEXT",
+            "evaluation_started_at": "TEXT",
+            "evaluation_completed_at": "TEXT",
+            "cooling_started_at": "TEXT",
+            "cooling_completed_at": "TEXT",
+            "attempt": "INTEGER",
+            "max_retries": "INTEGER",
+        }
+        add_columns("benchmark_run_tasks", run_task_columns)
+
     def _has_missing_telemetry(self, run_id: Optional[str]) -> bool:
         """Return True if any task/dialog is missing telemetry or outputs."""
         if not run_id:
@@ -451,16 +463,44 @@ class DBMixin:
         status: str,
         error: Optional[str] = None,
         completed_at: Optional[str] = None,
+        workflow: Optional[Dict[str, Any]] = None,
     ) -> None:
         ts = completed_at or datetime.utcnow().isoformat()
         safe_status = status if status in ("passed", "failed", "error", "completed_no_eval") else "failed"
+        workflow = workflow or {}
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("""
                     UPDATE benchmark_run_tasks
-                    SET status=?, completed_at=?, error=?
+                    SET status=?,
+                        completed_at=?,
+                        error=?,
+                        first_token_at=COALESCE(?, first_token_at),
+                        streaming_completed_at=COALESCE(?, streaming_completed_at),
+                        evaluation_started_at=COALESCE(?, evaluation_started_at),
+                        evaluation_completed_at=COALESCE(?, evaluation_completed_at),
+                        cooling_started_at=COALESCE(?, cooling_started_at),
+                        cooling_completed_at=COALESCE(?, cooling_completed_at),
+                        attempt=COALESCE(?, attempt),
+                        max_retries=COALESCE(?, max_retries)
                     WHERE run_id=? AND model_name=? AND dataset_name=? AND task_name=?
-                """, (safe_status, ts, error, self.run_id, model_name, dataset_name, task_name))
+                """, (
+                    safe_status,
+                    ts,
+                    error,
+                    workflow.get("first_token_at"),
+                    workflow.get("streaming_completed_at"),
+                    workflow.get("evaluation_started_at"),
+                    workflow.get("evaluation_completed_at"),
+                    workflow.get("cooling_started_at"),
+                    workflow.get("cooling_completed_at"),
+                    workflow.get("attempt"),
+                    workflow.get("max_retries"),
+                    self.run_id,
+                    model_name,
+                    dataset_name,
+                    task_name,
+                ))
         except Exception:
             pass
 
@@ -493,7 +533,18 @@ class DBMixin:
                 """, (self.run_id, model_name, task_name))
                 conn.execute("""
                     UPDATE benchmark_run_tasks
-                    SET status='pending', started_at=NULL, completed_at=NULL, error=NULL
+                    SET status='pending',
+                        started_at=NULL,
+                        first_token_at=NULL,
+                        streaming_completed_at=NULL,
+                        evaluation_started_at=NULL,
+                        evaluation_completed_at=NULL,
+                        cooling_started_at=NULL,
+                        cooling_completed_at=NULL,
+                        attempt=NULL,
+                        max_retries=NULL,
+                        completed_at=NULL,
+                        error=NULL
                     WHERE run_id=? AND model_name=? AND dataset_name=?
                 """, (self.run_id, model_name, task_name))
         except Exception:
@@ -513,7 +564,18 @@ class DBMixin:
                 """, (self.run_id, model_name, dataset))
                 conn.execute("""
                     UPDATE benchmark_run_tasks
-                    SET status='pending', started_at=NULL, completed_at=NULL, error=NULL
+                    SET status='pending',
+                        started_at=NULL,
+                        first_token_at=NULL,
+                        streaming_completed_at=NULL,
+                        evaluation_started_at=NULL,
+                        evaluation_completed_at=NULL,
+                        cooling_started_at=NULL,
+                        cooling_completed_at=NULL,
+                        attempt=NULL,
+                        max_retries=NULL,
+                        completed_at=NULL,
+                        error=NULL
                     WHERE run_id=? AND model_name=? AND dataset_name=?
                 """, (self.run_id, model_name, dataset))
         except Exception:
@@ -528,6 +590,22 @@ class DBMixin:
                     SELECT 1 FROM benchmark_samples
                     WHERE run_id=? AND model_name=? AND task_name=?
                       AND (response IS NULL OR length(response)=0 OR response LIKE '[error]%')
+                    LIMIT 1
+                """, (self.run_id, model_name, task_name))
+                return cursor.fetchone() is not None
+        except Exception:
+            return False
+
+    def _task_has_incomplete_run_scope(self, model_name: str, task_name: str) -> bool:
+        """Return True if any run-scope sample rows are still pending/running."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT 1
+                    FROM benchmark_run_tasks
+                    WHERE run_id=? AND model_name=? AND dataset_name=?
+                      AND COALESCE(status, 'pending') IN ('pending', 'running')
                     LIMIT 1
                 """, (self.run_id, model_name, task_name))
                 return cursor.fetchone() is not None
@@ -565,6 +643,12 @@ class DBMixin:
                     return False
                 completed_at, gpu_avail, disk_avail, cpu_avail = row
                 if completed_at is None:
+                    return False
+                if self._task_has_incomplete_run_scope(model_name, task_name):
+                    logger.info(
+                        "Task %s marked complete in benchmark_tasks but still has pending/running run-scope rows; forcing rerun",
+                        task_name,
+                    )
                     return False
                 if self._task_has_missing_output(model_name, task_name):
                     if self._rerun_error_tasks_enabled():

@@ -76,6 +76,23 @@ class TaskMixin:
             self._serialize_log_payload(response_text),
         )
 
+    def _workflow_payload(
+        self,
+        metrics: Optional[Dict[str, Any]],
+        evaluation_started_at: Optional[str],
+        evaluation_completed_at: Optional[str],
+    ) -> Dict[str, Any]:
+        """Extract persisted workflow timing for selected-task history."""
+        metrics = metrics or {}
+        return {
+            "first_token_at": metrics.get("first_token_at"),
+            "streaming_completed_at": metrics.get("streaming_completed_at") or metrics.get("request_completed_at"),
+            "evaluation_started_at": evaluation_started_at,
+            "evaluation_completed_at": evaluation_completed_at,
+            "attempt": metrics.get("attempt"),
+            "max_retries": metrics.get("max_retries"),
+        }
+
     def _preview_prompt(self, prompt, multi_turn: bool) -> str:
         """Return a short preview for prompts/messages."""
         if multi_turn and isinstance(prompt, list):
@@ -552,6 +569,8 @@ class TaskMixin:
             position = f"sample={idx + 1}/{total_samples} id={sample_id}"
             self._mark_task_started(model_name, task_name, sample_id, task_label=sample_id)
             self._log_request_trace("start", model_name, dataset_label, task_name, position, None, {}, expected)
+            evaluation_started_at = None
+            evaluation_completed_at = None
             try:
                 response, metrics = self._call_ollama_with_metrics(
                     model_name,
@@ -586,6 +605,7 @@ class TaskMixin:
                 }
                 correct = False
             else:
+                evaluation_started_at = datetime.utcnow().isoformat()
                 if getattr(self, "_evaluation_enabled", True):
                     if grading:
                         result = self._evaluate_with_grading(response, expected, grading, sample)
@@ -597,6 +617,7 @@ class TaskMixin:
                 else:
                     result = {"correct": None, "evaluation_skipped": True, "grading": grading}
                     correct = None
+                evaluation_completed_at = datetime.utcnow().isoformat()
                 total_ttft += metrics['ttft_ms']
                 total_tokens_per_sec += metrics['tokens_per_sec']
                 self._accumulate_resource_totals(resource_totals, metrics.get('resource_stats'))
@@ -625,7 +646,14 @@ class TaskMixin:
                 status = "completed_no_eval"
             else:
                 status = "passed" if correct else "failed"
-            self._mark_task_completed(model_name, task_name, sample_id, status, error=metrics.get("timeout_reason"))
+            self._mark_task_completed(
+                model_name,
+                task_name,
+                sample_id,
+                status,
+                error=metrics.get("timeout_reason"),
+                workflow=self._workflow_payload(metrics, evaluation_started_at, evaluation_completed_at),
+            )
 
             # Cooldown removed - GPU temperature guard handles thermal management
     
@@ -765,6 +793,8 @@ class TaskMixin:
                 self._log_request_trace("start", model_name, dataset_label, task_name, position, None, {}, expected)
                 dialog_start = datetime.utcnow().isoformat()
                 resource_totals = self._init_resource_totals()
+                evaluation_started_at = None
+                evaluation_completed_at = None
                 try:
                     response, metrics = self._call_ollama_with_metrics(
                         model_name,
@@ -784,6 +814,7 @@ class TaskMixin:
                         'input_tokens': len(str(user_msg).split()),
                         'output_tokens': 0
                     }
+                evaluation_started_at = datetime.utcnow().isoformat()
                 if getattr(self, "_evaluation_enabled", True):
                     if grading:
                         eval_result = self._evaluate_with_grading(response, expected, grading, sample)
@@ -799,6 +830,7 @@ class TaskMixin:
                         "violations": ["evaluation skipped (--no-evaluation)"],
                     }
                     correct = None
+                evaluation_completed_at = datetime.utcnow().isoformat()
 
                 if correct is True:
                     turn_counter_compliant = 1
@@ -854,7 +886,14 @@ class TaskMixin:
                     status = "completed_no_eval"
                 else:
                     status = "passed" if eval_result.get("all_compliant") else "failed"
-                self._mark_task_completed(model_name, task_name, dialog_id, status, error=metrics.get("timeout_reason"))
+                self._mark_task_completed(
+                    model_name,
+                    task_name,
+                    dialog_id,
+                    status,
+                    error=metrics.get("timeout_reason"),
+                    workflow=self._workflow_payload(metrics, evaluation_started_at, evaluation_completed_at),
+                )
 
                 # Cooldown removed - GPU temperature guard handles thermal management
             self.state["current_dialog_id"] = None
@@ -934,6 +973,8 @@ class TaskMixin:
                     task_label=f"dialog {dialog_id} turn {turn_idx + 1}",
                 )
                 self._log_request_trace("start", model_name, dataset_label, task_name, position, None, {})
+                evaluation_started_at = None
+                evaluation_completed_at = None
                 try:
                     # Call model
                     response, metrics = self._call_ollama_with_metrics(
@@ -964,8 +1005,9 @@ class TaskMixin:
                 self._log_request_trace("end", model_name, dataset_label, task_name, position, response, metrics)
 
                 context.append({"role": "assistant", "content": response})
-            
+
                 # Evaluate turn
+                evaluation_started_at = datetime.utcnow().isoformat()
                 if getattr(self, "_evaluation_enabled", True):
                     eval_result = evaluator.evaluate_turn(response, turn_spec)
                     if eval_result.get('all_compliant'):
@@ -977,6 +1019,7 @@ class TaskMixin:
                         "compliance": {"compliant": None},
                         "violations": ["evaluation skipped (--no-evaluation)"],
                     }
+                evaluation_completed_at = datetime.utcnow().isoformat()
             
                 ttfts.append(metrics['ttft_ms'])
                 tps_values.append(metrics['tokens_per_sec'])
@@ -1005,7 +1048,14 @@ class TaskMixin:
                     status = "completed_no_eval"
                 else:
                     status = "passed" if eval_result.get("all_compliant") else "failed"
-                self._mark_task_completed(model_name, task_name, task_name_id, status, error=metrics.get("timeout_reason"))
+                self._mark_task_completed(
+                    model_name,
+                    task_name,
+                    task_name_id,
+                    status,
+                    error=metrics.get("timeout_reason"),
+                    workflow=self._workflow_payload(metrics, evaluation_started_at, evaluation_completed_at),
+                )
 
                 # Cooldown removed - GPU temperature guard handles thermal management
         

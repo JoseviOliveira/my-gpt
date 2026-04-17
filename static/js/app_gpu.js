@@ -141,6 +141,9 @@
     };
     const pollInterval = () => (window.IS_GUEST ? 30000 : 5000);
     const tick = async () => {
+      if (document.hidden) {
+        return;
+      }
       if (!isLogged()) {
         if (forceShow) {
           updateGpuGaugeDisplay({ available: false, utilization: null });

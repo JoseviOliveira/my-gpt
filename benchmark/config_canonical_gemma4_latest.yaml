@@ -1,0 +1,156 @@
+# Canonical Full Benchmark Configuration (single model)
+# Scope: 8 datasets, 80 samples total, exact 40/40/20 difficulty split
+# Dataset pack: benchmark/datasets/canonical_full_80/
+
+benchmark:
+  run_name: "local-chat-benchmark-canonical-80-gemma4-latest"
+  description: "Canonical full benchmark: gemma4:latest across 8 datasets / 80 samples"
+  database_path: "db/benchmark.db"
+
+# Timeout detection (UX + hang protection)
+timeout:
+  max_ttft_sec: 120
+  token_stall_timeout: 360
+  max_request_timeout: 900
+  gpu_saturation_threshold: 95
+  gpu_stall_kill_timeout: 120
+
+models:
+  - name: "gemma4:latest"
+    params_b: 8.0
+    quantization: "Q4_K_M"
+
+# Shortform tasks (5 datasets x 10 = 50 samples)
+shortform_tasks:
+  - name: "logic_deduction"
+    dataset: "datasets/canonical_full_80/logic_deduction_10.jsonl"
+    evaluator: "exact_match"
+    config: "reasoning"
+    category: "reasoning"
+
+  - name: "critical_thinking"
+    dataset: "datasets/canonical_full_80/critical_thinking_10.jsonl"
+    evaluator: "exact_match"
+    config: "reasoning"
+    category: "reasoning"
+
+  - name: "physics"
+    dataset: "datasets/canonical_full_80/physics_10.jsonl"
+    evaluator: "exact_match"
+    config: "standard"
+    category: "knowledge_stem"
+
+  - name: "cs_engineering"
+    dataset: "datasets/canonical_full_80/cs_engineering_10.jsonl"
+    evaluator: "exact_match"
+    config: "standard"
+    category: "knowledge_stem"
+
+  - name: "history"
+    dataset: "datasets/canonical_full_80/history_10.jsonl"
+    evaluator: "exact_match"
+    config: "standard"
+    category: "knowledge_humanities"
+
+# Chat tasks (3 datasets x 10 = 30 samples)
+chat_tasks:
+  - name: "chat_memory"
+    dataset: "datasets/canonical_full_80/chat_memory_10.jsonl"
+    evaluator: "chat"
+    config: "chat_deterministic"
+
+  - name: "chat_safety"
+    dataset: "datasets/canonical_full_80/chat_safety_10.jsonl"
+    evaluator: "chat"
+    config: "chat_deterministic"
+
+  - name: "chat_instruction"
+    dataset: "datasets/canonical_full_80/chat_instruction_10.jsonl"
+    evaluator: "chat"
+    config: "chat_deterministic"
+
+decoding_configs:
+  standard:
+    temperature: 0.0
+    top_p: 1.0
+    top_k: 1
+    max_tokens: 1024
+    seed: 42
+    stream: true
+    stop: ["\n\nQuestion:", "\n\n---", "<|endoftext|>"]
+
+  reasoning:
+    temperature: 0.0
+    top_p: 1.0
+    top_k: 1
+    max_tokens: 4096
+    seed: 42
+    stream: true
+    stop: ["\n\nProblem:", "\n\n---", "<|endoftext|>"]
+
+  chat_deterministic:
+    temperature: 0.0
+    top_p: 1.0
+    top_k: 1
+    max_tokens: 512
+    seed: 42
+    stream: true
+    stop: ["\n\nUser:", "\nSystem:"]
+
+thermal:
+  cooldowns:
+    light: 0
+    medium: 0
+    heavy: 0
+    extreme: 0
+  inter_model_cooldown: 0
+  inter_turn_delay_ms: 0
+  batch_cooldown_interval: 0
+  batch_cooldown_duration: 0
+  gpu_utilization_guard: 100
+  gpu_temperature_guard: 50
+  gpu_guard_poll_sec: 2
+  gpu_guard_timeout_sec: 120
+  gpu_guard_http_timeout_sec: 8
+  max_gpu_temp_celsius: 85
+
+resources:
+  resource_sample_interval_sec: 3.0
+  disk_io_bands_mbps: [1, 5]
+  gpu_temp_bands: [50, 70, 85, 95]
+  gpu_util_bands: [80, 95]
+  cpu_util_bands: [20, 50, 70]
+  store_raw_samples: false
+
+ollama:
+  request_timeout_seconds: 600
+  stream_idle_timeout_seconds: 180
+  request_retries: 3
+  retry_backoff_seconds: 2
+  hang_gpu_wait_seconds: 30
+  restart_cmd: "./scripts/run.sh restart"
+
+scoring:
+  category_weights:
+    reasoning: 0.40
+    knowledge_stem: 0.35
+    knowledge_humanities: 0.25
+
+  chat_weights:
+    memory_recall: 0.45
+    refusal_quality: 0.35
+    instruction: 0.20
+
+  fitness_weights:
+    shortform_quality: 0.50
+    chat_ux: 0.30
+    speed: 0.15
+    efficiency: 0.05
+
+output:
+  report_path: "static/docs/benchmark_guided.html"
+  template_path: "benchmark/templates/report_template.html"
+  log_level: "INFO"
+
+# Runtime rough order-of-magnitude:
+# 80 samples x 1 model = 80 prompt evaluations

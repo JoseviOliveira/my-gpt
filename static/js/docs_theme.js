@@ -68,6 +68,8 @@
         <div class="docs-nav-dropdown">
           <a href="/docs/benchmark_guided.html">Benchmark (Guided)</a>
           <a href="/docs/benchmark_autonomous_claude.html">Benchmark (Claude)</a>
+          <a href="/docs/benchmark_update_spring_26.html">Benchmark Update Spring '26</a>
+          <a href="/docs/benchmark_builder.html">Benchmark Builder</a>
           <a href="/docs/benchmark_monitor_guide.html">Live Monitor</a>
           <a href="/docs/dashboard.html">Analytics</a>
         </div>
@@ -84,6 +86,8 @@
     '/docs/handwrite.html',
     '/docs/benchmark_guided.html',
     '/docs/benchmark_autonomous_claude.html',
+    '/docs/benchmark_update_spring_26.html',
+    '/docs/benchmark_builder.html',
     '/docs/benchmark_monitor_guide.html',
     '/docs/dashboard.html',
   ];
@@ -97,6 +101,8 @@
     '/docs/handwrite.html': 'About',
     '/docs/benchmark_guided.html': 'Benchmark (Guided)',
     '/docs/benchmark_autonomous_claude.html': 'Benchmark (Claude)',
+    '/docs/benchmark_update_spring_26.html': "Benchmark Update Spring '26",
+    '/docs/benchmark_builder.html': 'Benchmark Builder',
     '/docs/benchmark_monitor_guide.html': 'Live Monitor',
     '/docs/dashboard.html': 'Analytics',
     '/docs/index.html': 'Index',

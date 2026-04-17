@@ -1,7 +1,7 @@
 {
   log {
-    # Replace with your repo path
-    output file /Users/YOUR_USER/my-gpt/log/caddy.log
+    # Requires APP_DIR in the caddy process environment
+    output file {$APP_DIR}/log/caddy.log
     format json
   }
 }

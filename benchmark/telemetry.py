@@ -1043,6 +1043,7 @@ class TelemetryMixin:
                 watchdog_stopped = False
                 payload = None
                 ttft = None
+                first_token_at = None
                 start_time = time.time()
                 try:
                     messages = prompt if multi_turn else [{"role": "user", "content": str(prompt)}]
@@ -1105,6 +1106,8 @@ class TelemetryMixin:
                         
                             if ttft is None:
                                 ttft = int((time.time() - start_time) * 1000)
+                                first_token_at = datetime.utcnow().isoformat()
+                                request_info["first_token_at"] = first_token_at
                             
                                 # Check TTFT timeout (model too slow for chat UX)
                                 ttft_kill_reason = watchdog.notify_first_token()
@@ -1140,6 +1143,7 @@ class TelemetryMixin:
                         raise TimeoutError(watchdog.kill_reason)
 
                     total_time = time.time() - start_time
+                    streaming_completed_at = datetime.utcnow().isoformat()
                     stream_duration = time.time() - stream_start_time
                     self._log_full_answer(request_info, response_text)
                     if not response_text.strip():
@@ -1166,6 +1170,8 @@ class TelemetryMixin:
 
                     output_tokens = None
                     tokens_per_sec = None
+                    thinking_present = None
+                    thinking_chars = None
                     input_tokens = len(str(prompt).split())
                     try:
                         metrics_resp = requests.get(
@@ -1181,6 +1187,9 @@ class TelemetryMixin:
                                 output_tokens = ollama_metrics.get("output_tokens")
                                 input_tokens = ollama_metrics.get("prompt_tokens") or input_tokens
                                 tokens_per_sec = ollama_metrics.get("tokens_per_s")
+                                thinking_metrics = metrics_data.get("thinking") or {}
+                                thinking_present = thinking_metrics.get("present")
+                                thinking_chars = thinking_metrics.get("chars")
                         finally:
                             metrics_resp.close()  # Always close connection to prevent file descriptor leak
                     except Exception:
@@ -1196,9 +1205,26 @@ class TelemetryMixin:
                         'tokens_per_sec': tokens_per_sec,
                         'total_time_ms': int(total_time * 1000),
                         'input_tokens': input_tokens,
-                        'output_tokens': output_tokens
+                        'output_tokens': output_tokens,
+                        'request_started_at': request_info.get("started_at"),
+                        'first_token_at': first_token_at,
+                        'streaming_completed_at': streaming_completed_at,
+                        'attempt': attempt,
+                        'max_retries': retries,
                     }
+                    if thinking_present is not None or thinking_chars is not None:
+                        metrics['thinking_present'] = bool(thinking_present)
+                        metrics['thinking_chars'] = int(thinking_chars or 0)
                     metrics['request_payload'] = payload
+                    logger.info(
+                        "[ollama] response diagnostics model=%s task=%s request_id=%s ttft_ms=%s output_tokens=%s thinking_chars=%s",
+                        model_name,
+                        request_info.get("task"),
+                        request_id,
+                        ttft or 0,
+                        output_tokens,
+                        thinking_chars if thinking_chars is not None else "na",
+                    )
                     if resource_stats:
                         metrics['resource_stats'] = resource_stats
                         self._append_resource_samples(resource_stats)
@@ -1243,7 +1269,12 @@ class TelemetryMixin:
                         'timeout_type': timeout_type,
                         'timeout_reason': str(te),
                         'tokens_before_timeout': watchdog.total_tokens if watchdog else 0,
-                        'request_payload': payload
+                        'request_payload': payload,
+                        'request_started_at': request_info.get("started_at"),
+                        'first_token_at': first_token_at,
+                        'streaming_completed_at': datetime.utcnow().isoformat(),
+                        'attempt': attempt,
+                        'max_retries': retries,
                     }
                     if resource_stats:
                         error_metrics['resource_stats'] = resource_stats
@@ -1291,6 +1322,8 @@ class TelemetryMixin:
                 request_info["status"] = "completed"
                 request_info["ended_at"] = datetime.utcnow().isoformat()
                 response_text, metrics = result
+                if isinstance(metrics, dict):
+                    metrics.setdefault("request_completed_at", request_info["ended_at"])
                 request_info["response_preview"] = self._preview_text(
                     response_text, RESPONSE_PREVIEW_LEN
                 )

@@ -137,7 +137,7 @@ def _estimate_missing_tokens(gen_count, gen_seconds, clean_text, started, finish
     return gen_count, gen_seconds, tps
 
 
-def _build_metrics_dict(req_id, mode, model, started, finished, meta, clean_text):
+def _build_metrics_dict(req_id, mode, model, started, finished, meta, clean_text, reasoning_text=""):
     """Build metrics dictionary from streaming response metadata."""
     total_s = _ns_to_seconds(meta.get("total_duration"))
     load_s = _ns_to_seconds(meta.get("load_duration"))
@@ -148,6 +148,7 @@ def _build_metrics_dict(req_id, mode, model, started, finished, meta, clean_text
     
     gen_cnt, gen_s, tps = _estimate_missing_tokens(gen_cnt, gen_s, clean_text, started, finished)
     
+    reasoning_text = reasoning_text or ""
     return {
         "id": req_id,
         "mode": mode,
@@ -165,6 +166,10 @@ def _build_metrics_dict(req_id, mode, model, started, finished, meta, clean_text
             "tokens_per_s": tps,
         },
         "chars": len(clean_text),
+        "thinking": {
+            "present": bool(reasoning_text),
+            "chars": len(reasoning_text),
+        },
     }
 
 
@@ -370,7 +375,16 @@ def stream():
             finished = datetime.datetime.now(datetime.UTC)
             
             METRICS[req_id] = _build_metrics_dict(
-                req_id, mode, selected_model, started, finished, meta, clean_accum
+                req_id, mode, selected_model, started, finished, meta, clean_accum, reasoning_accum
+            )
+            log_obj.info(
+                "[LLM] stream_meta model=%s id=%s benchmark=%d visible_chars=%d thinking_chars=%d elapsed=%.3fs",
+                selected_model,
+                req_id,
+                1 if is_benchmark else 0,
+                len(clean_accum),
+                len(reasoning_accum),
+                (finished - started).total_seconds(),
             )
             
             log_llm_call(

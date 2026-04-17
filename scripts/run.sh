@@ -15,6 +15,7 @@ export TTS_WARMUP_ENABLED=0
 export OLLAMA_KEEP_ALIVE=-1
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+export APP_DIR
 LOG_DIR="$APP_DIR/log"
 mkdir -p "$LOG_DIR"
 : "${OLLAMA_URL:=http://127.0.0.1:11434}"

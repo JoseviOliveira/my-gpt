@@ -58,5 +58,9 @@ db/*
 !db/analytics.db
 *.tar.gz
 
-# Local marketing drafts/plans
-MARKETING*.md
+# Personal files
+brainstorming/
+scripts/generate_visit_report.py
+static/docs/copilot_drift.html
+static/docs/visit_analysis_report.html
+static/posts/

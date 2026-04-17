@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # Always use absolute paths under launchd (no inherited PATH or cwd)
-APP_DIR="/Users/sevi/local-chat"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd -P)"
+APP_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
 cd "$APP_DIR"
 
 # Load unified environment config (if present)

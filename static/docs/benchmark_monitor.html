@@ -111,10 +111,11 @@
             position: fixed;
             top: 10px;
             right: 12px;
-            z-index: 220;
+            z-index: 12000;
             border: 1px solid var(--card-border);
             background: var(--card-bg);
             color: var(--text-secondary);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
             border-radius: 999px;
             padding: 5px 10px;
             font-size: 11px;
@@ -886,6 +887,19 @@
             text-transform: uppercase;
         }
 
+        .selected-task-pill {
+            display: none;
+            margin-left: 8px;
+            padding: 2px 8px;
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
         .pills-group-controls {
             display: flex;
             gap: 8px;
@@ -964,6 +978,16 @@
             font-family: var(--font-mono);
             color: var(--text-primary);
             transition: all 0.2s ease;
+        }
+
+        .task-pill.is-clickable {
+            cursor: pointer;
+        }
+
+        .task-pill.is-selected {
+            border-color: rgba(245, 158, 11, 0.95);
+            box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3);
+            background: rgba(245, 158, 11, 0.14);
         }
 
         .dataset-pill.pending, .task-pill.pending {
@@ -1118,6 +1142,7 @@
                 <button type="button" class="view-toggle-btn active" id="toggleModelsOverview" aria-pressed="true">Models</button>
                 <button type="button" class="view-toggle-btn active" id="toggleDatasetsOverview" aria-pressed="true">Datasets Overview</button>
                 <button type="button" class="view-toggle-btn active" id="toggleCurrentDatasetTasks" aria-pressed="true">Current Dataset Tasks</button>
+                <button type="button" class="view-toggle-btn active" id="toggleFollowCurrent" aria-pressed="true">Live</button>
             </div>
         </div>
         <div class="pills-row-container">
@@ -1162,7 +1187,7 @@
             </div>
             <div class="rag-item">
                 <div>
-                    <div class="rag-title">Task Details</div>
+                    <div class="rag-title">Task Details<span id="kpiTaskDetailsPill" class="selected-task-pill">selected task</span></div>
                     <div class="rag-value">Attempt <span id="kpiAttempt">-</span> • Status <span id="kpiTaskStatus">-</span></div>
                     <div class="rag-sub">TTFT <span id="kpiTtft">-</span> • Speed <span id="kpiSpeed">-</span> • E2E <span id="kpiE2E">-</span></div>
                 </div>
@@ -1492,12 +1517,20 @@
         let lastDatasetKey = null;
         let datasetPayload = null;
         let lastTaskPayload = null;
+        let selectedTaskPayload = null;
         let datasetLastFetch = 0;
         let lastTaskFetch = 0;
+        let selectedTaskFetch = 0;
         let liveMetricRequestKey = null;
         let lastLiveE2ESec = null;
         let lastLiveEvalSec = null;
         let lockedTtftMs = null;
+        let navigationState = {
+            followLive: true,
+            selectedModel: null,
+            selectedDatasetKey: null,
+            selectedTaskKey: null
+        };
         
         // New clean architecture: three separate immutable objects
         let task_current = null;      // Live streaming task (status: PROMPT_SENT | WAITING_FIRST_TOKEN | STREAMING)
@@ -1572,11 +1605,19 @@
             return workflow;
         }
 
+        function deriveDisplayedWorkflowState() {
+            const selectedTask = getHistoricalSelectedTask();
+            if (selectedTask) {
+                return buildHistoricalWorkflow(selectedTask);
+            }
+            return deriveWorkflowState();
+        }
+
         // Start workflow pill timer update (100ms for live timing)
         function startWorkflowTimer() {
             if (workflowTimerInterval) return;
             workflowTimerInterval = setInterval(() => {
-                const workflow = deriveWorkflowState();
+                const workflow = deriveDisplayedWorkflowState();
                 const stages = ['cooling', 'thinking', 'streaming', 'evaluating', 'done'];
 
                 stages.forEach(stage => {
@@ -1738,7 +1779,143 @@
             if (!value) return '';
             const base = String(value).split('/').pop() || '';
             const trimmed = base.replace(/\.[^/.]+$/, '');
-            return trimmed.replace(/_\\d+$/, '').toLowerCase();
+            return trimmed.replace(/_\d+$/, '').toLowerCase();
+        }
+
+        function getAllDatasets() {
+            return Array.isArray(datasetPayload?.datasets) ? datasetPayload.datasets : [];
+        }
+
+        function datasetEntryKey(entry) {
+            if (!entry) return '';
+            return `${entry.model_name || ''}::${entry.dataset_id || entry.dataset_label || ''}`;
+        }
+
+        function taskEntryKey(entry, task) {
+            if (!entry || !task) return '';
+            if ((entry.type || task.kind) === 'chat') {
+                return `chat:${entry.model_name || ''}:${entry.dataset_id || entry.dataset_label || ''}:${task.dialog_id || ''}:${task.turn_index ?? ''}`;
+            }
+            return `shortform:${entry.model_name || ''}:${entry.dataset_id || entry.dataset_label || ''}:${task.sample_id || task.task_name || ''}`;
+        }
+
+        function currentTaskSelectionKey(state = {}) {
+            const modelName = state.current_model || '';
+            const datasetName = state.current_dataset || state.current_task || '';
+            if (!modelName || !datasetName) return '';
+            if (state.current_sample_id) {
+                return `shortform:${modelName}:${datasetName}:${state.current_sample_id}`;
+            }
+            if (state.current_dialog_id) {
+                return `chat:${modelName}:${datasetName}:${state.current_dialog_id}:${state.current_turn_index ?? 0}`;
+            }
+            return '';
+        }
+
+        function getManualSelectionInfo() {
+            const selection = getResolvedSelection();
+            const state = selection.state || {};
+            const currentKey = currentTaskSelectionKey(state);
+            const isManual = !navigationState.followLive && !!selection.selectedTask;
+            const isCurrent = !!(selection.selectedTaskKey && currentKey && selection.selectedTaskKey === currentKey);
+            return { selection, state, isManual, isCurrent };
+        }
+
+        function getHistoricalSelectedTask() {
+            const info = getManualSelectionInfo();
+            if (!info.isManual || info.isCurrent) return null;
+            return selectedTaskPayload?.task || info.selection.selectedTask || null;
+        }
+
+        function buildHistoricalWorkflow(task) {
+            const workflow = task?.workflow || null;
+            if (workflow) return workflow;
+            const metrics = task?.metrics || {};
+            const status = String(task?.status || 'pending').toLowerCase();
+            const totalMs = Number(metrics.total_time_ms);
+            const ttftMs = Number(metrics.ttft_ms);
+            const hasTtft = Number.isFinite(ttftMs);
+            const hasTotal = Number.isFinite(totalMs);
+            return {
+                cooling: { status: 'unavailable', time: null, live: false },
+                thinking: hasTtft
+                    ? { status: 'completed', time: Math.max(0, ttftMs / 1000), live: false }
+                    : { status: 'unavailable', time: null, live: false },
+                streaming: hasTotal && hasTtft
+                    ? { status: 'completed', time: Math.max(0, (totalMs - ttftMs) / 1000), live: false }
+                    : { status: 'unavailable', time: null, live: false },
+                evaluating: { status: 'unavailable', time: null, live: false },
+                done: { status: status === 'error' ? 'failed' : (status === 'pending' ? 'pending' : 'completed'), live: false }
+            };
+        }
+
+        function findDatasetEntry(datasets, modelName, datasetName) {
+            if (!modelName || !datasetName) return null;
+            const normalized = normalizeDatasetLabel(datasetName);
+            return datasets.find((entry) => {
+                if (entry.model_name !== modelName) return false;
+                return entry.dataset_id === datasetName
+                    || normalizeDatasetLabel(entry.dataset_id) === normalized
+                    || normalizeDatasetLabel(entry.dataset_label) === normalized;
+            }) || null;
+        }
+
+        function pickDefaultTaskKey(entry, state = {}) {
+            if (!entry || !Array.isArray(entry.tasks) || !entry.tasks.length) return null;
+            const currentKey = currentTaskSelectionKey(state);
+            const liveTask = entry.tasks.find((task) => taskEntryKey(entry, task) === currentKey);
+            if (liveTask) return taskEntryKey(entry, liveTask);
+            const completedTask = [...entry.tasks]
+                .reverse()
+                .find((task) => ['pass', 'fail', 'error'].includes(String(task.status || '').toLowerCase()));
+            if (completedTask) return taskEntryKey(entry, completedTask);
+            return taskEntryKey(entry, entry.tasks[0]);
+        }
+
+        function getResolvedSelection() {
+            const datasets = getAllDatasets();
+            const state = dbState || latestState || {};
+            const currentDatasetEntry = findDatasetEntry(datasets, state.current_model, state.current_dataset || state.current_task);
+
+            let selectedModel = navigationState.selectedModel;
+            const modelNames = [...new Set(datasets.map((entry) => entry.model_name).filter(Boolean))];
+            if (navigationState.followLive || !selectedModel || !modelNames.includes(selectedModel)) {
+                selectedModel = currentDatasetEntry?.model_name || modelNames[0] || '';
+            }
+
+            let selectedDatasetEntry = datasets.find((entry) => datasetEntryKey(entry) === navigationState.selectedDatasetKey);
+            if (!selectedDatasetEntry || selectedDatasetEntry.model_name !== selectedModel) {
+                selectedDatasetEntry = null;
+            }
+            if (navigationState.followLive || !selectedDatasetEntry) {
+                selectedDatasetEntry = currentDatasetEntry && currentDatasetEntry.model_name === selectedModel
+                    ? currentDatasetEntry
+                    : (datasets.find((entry) => entry.model_name === selectedModel) || null);
+            }
+
+            const selectedTask = selectedDatasetEntry?.tasks?.find((task) => taskEntryKey(selectedDatasetEntry, task) === navigationState.selectedTaskKey) || null;
+            const selectedTaskKey = selectedTask
+                ? taskEntryKey(selectedDatasetEntry, selectedTask)
+                : (navigationState.followLive ? null : pickDefaultTaskKey(selectedDatasetEntry, state));
+
+            return {
+                datasets,
+                state,
+                currentDatasetEntry,
+                selectedModel,
+                selectedDatasetEntry,
+                selectedDatasetKey: selectedDatasetEntry ? datasetEntryKey(selectedDatasetEntry) : null,
+                selectedTask,
+                selectedTaskKey
+            };
+        }
+
+        function setNavigationSelection(next = {}) {
+            navigationState.followLive = next.followLive === true;
+            navigationState.selectedModel = next.selectedModel || null;
+            navigationState.selectedDatasetKey = next.selectedDatasetKey || null;
+            navigationState.selectedTaskKey = next.selectedTaskKey || null;
+            selectedTaskPayload = null;
         }
 
         function formatMetric(value, digits = 1) {
@@ -1784,7 +1961,7 @@
             return label.length > 14 ? `${label.slice(0, 12)}...` : label;
         }
 
-        function renderTaskGrid(entry) {
+        function renderTaskGrid(entry, selectedTaskKey = null) {
             const grid = document.getElementById('taskGrid');
             if (!grid) return;
             grid.innerHTML = '';
@@ -1800,9 +1977,10 @@
             
             entry.tasks.forEach((task, idx) => {
                 const pill = document.createElement('div');
-                pill.className = 'task-pill';
+                pill.className = 'task-pill is-clickable';
                 const rawStatus = String(task.status || 'pending');
                 const normalizedStatus = rawStatus.toLowerCase();
+                const taskKey = taskEntryKey(entry, task);
                 
                 // Check if this is the currently running task
                 let isCurrentTask = false;
@@ -1817,10 +1995,23 @@
                 const isLiveStatus = ['running', 'active', 'initializing'].includes(normalizedStatus);
                 const isLiveTask = isCurrentTask || isLiveStatus;
                 pill.dataset.status = isLiveTask ? 'running' : normalizedStatus;
+                pill.classList.toggle('is-selected', !!selectedTaskKey && taskKey === selectedTaskKey);
                 const dot = document.createElement('span');
                 dot.className = 'task-dot';
                 const label = document.createElement('span');
                 label.textContent = taskLabel(entry, task, idx);
+                pill.addEventListener('click', () => {
+                    setNavigationSelection({
+                        followLive: false,
+                        selectedModel: entry.model_name,
+                        selectedDatasetKey: datasetEntryKey(entry),
+                        selectedTaskKey: taskKey
+                    });
+                    updateDatasetTaskPills();
+                    updateDatasetDashboard();
+                    updateLastTaskCard();
+                    fetchSelectedTaskDetail(true);
+                });
                 pill.append(dot, label);
                 grid.append(pill);
             });
@@ -1829,9 +2020,7 @@
         function resetDatasetDashboard() {
             datasetPayload = null;
             lastTaskPayload = null;
-            dbState = null;
-            dbScope = null;
-            dbRunInfo = null;
+            selectedTaskPayload = null;
             updateDatasetDashboard();
             updateLastTaskCard();
             updateLiveKPIs();
@@ -1917,7 +2106,20 @@
             document.getElementById('kpiRemainingTasks').textContent = remainingTasks !== null ? String(remainingTasks) : '-';
 
             // Task Details Card
-            const task = dbState.task || {};
+            const historicalTask = getHistoricalSelectedTask();
+            const historicalMetrics = historicalTask?.metrics || {};
+            const task = historicalTask ? {
+                attempt: historicalMetrics.attempt,
+                max_retries: historicalMetrics.max_retries,
+                status: historicalTask.status,
+                ttft_ms: historicalMetrics.ttft_ms,
+                tokens_per_sec: historicalMetrics.tokens_per_sec,
+                e2e_ms: historicalMetrics.total_time_ms,
+            } : (dbState.task || {});
+            const taskDetailsPill = document.getElementById('kpiTaskDetailsPill');
+            if (taskDetailsPill) {
+                taskDetailsPill.style.display = historicalTask ? 'inline-block' : 'none';
+            }
             const attempt = Number.isFinite(task.attempt) ? task.attempt : null;
             const maxRetries = Number.isFinite(task.max_retries) ? task.max_retries : null;
             document.getElementById('kpiAttempt').textContent = (attempt !== null && maxRetries !== null) ? `${attempt}/${maxRetries}` : '-';
@@ -1958,7 +2160,7 @@
         }
 
         function updateWorkflowPills() {
-            const workflow = deriveWorkflowState();
+            const workflow = deriveDisplayedWorkflowState();
             const stages = ['cooling', 'thinking', 'streaming', 'evaluating', 'done'];
 
             stages.forEach(stage => {
@@ -1998,6 +2200,8 @@
                     infoText = `${Math.max(0, Math.floor(elapsed))}s`;
                 } else if (status === 'pending') {
                     infoText = '--';
+                } else if (status === 'unavailable') {
+                    infoText = 'n/a';
                 } else if (status === 'completed') {
                     infoText = '✓';
                 } else if (status === 'failed') {
@@ -2029,6 +2233,7 @@
             const modelsSection = document.getElementById('modelsOverviewSection');
             const datasetsSection = document.getElementById('datasetsOverviewSection');
             const tasksSection = document.getElementById('currentDatasetTasksSection');
+            const followCurrentBtn = document.getElementById('toggleFollowCurrent');
             const toggleModelsBtn = document.getElementById('toggleModelsOverview');
             const toggleDatasetsBtn = document.getElementById('toggleDatasetsOverview');
             const toggleTasksBtn = document.getElementById('toggleCurrentDatasetTasks');
@@ -2064,6 +2269,15 @@
                     state.modelsOverview = !state.modelsOverview;
                     apply();
                     persist();
+                });
+            }
+
+            if (followCurrentBtn) {
+                followCurrentBtn.addEventListener('click', () => {
+                    setNavigationSelection({ followLive: true });
+                    updateDatasetTaskPills();
+                    updateDatasetDashboard();
+                    updateLastTaskCard();
                 });
             }
 
@@ -2149,6 +2363,20 @@
                     return;
                 }
 
+                const selection = getResolvedSelection();
+                const datasets = selection.datasets;
+                const state = selection.state || {};
+                const isRunActive = state && (state.status === 'running' || state.status === 'initializing');
+                const currentModel = state.current_model || '';
+                const currentDatasetEntry = selection.currentDatasetEntry;
+                const selectedModel = selection.selectedModel;
+                const selectedDatasetEntry = selection.selectedDatasetEntry;
+                const followLiveBtn = document.getElementById('toggleFollowCurrent');
+                if (followLiveBtn) {
+                    followLiveBtn.classList.toggle('active', navigationState.followLive);
+                    followLiveBtn.setAttribute('aria-pressed', navigationState.followLive ? 'true' : 'false');
+                }
+
                 // Models Overview Pills
                 const modelsContainer = document.getElementById('modelsOverviewPills');
                 if (!modelsContainer) {
@@ -2156,10 +2384,6 @@
                     return;
                 }
                 modelsContainer.innerHTML = '';
-                const state = dbState || latestState || {};
-                const isRunActive = state && (state.status === 'running' || state.status === 'initializing');
-                const currentModel = state.current_model || '';
-                const currentModelIndex = Number(dbState?.dashboard?.model_index || state.model_index || 0) || 0;
                 const scopeModels = Array.isArray(dbScope?.models) ? dbScope.models : [];
                 const models = scopeModels.map((m, idx) => {
                     if (m && typeof m === 'object') {
@@ -2170,30 +2394,51 @@
                     }
                     return { name: String(m), index: idx + 1 };
                 });
+                const modelNames = models.length
+                    ? models.map((model) => model.name)
+                    : [...new Set(datasets.map((entry) => entry.model_name).filter(Boolean))].map((name, idx) => ({ name, index: idx + 1 }));
+                const renderedModels = Array.isArray(modelNames) && modelNames.length && typeof modelNames[0] === 'string'
+                    ? modelNames.map((name, idx) => ({ name, index: idx + 1 }))
+                    : modelNames;
 
-                if (models.length === 0) {
+                if (renderedModels.length === 0) {
                     modelsContainer.textContent = 'No models yet.';
                 } else {
-                    models.forEach((model, idx) => {
+                    renderedModels.forEach((model) => {
+                        const modelDatasets = datasets.filter((entry) => entry.model_name === model.name);
+                        const totalTasks = modelDatasets.reduce((sum, entry) => sum + Number(entry.tasks_total || 0), 0);
+                        const doneTasks = modelDatasets.reduce((sum, entry) => sum + Number(entry.tasks_passed || 0) + Number(entry.tasks_failed || 0), 0);
                         const pill = document.createElement('div');
-                        pill.className = 'task-pill';
-
-                        const modelIdx = Number(model.index || (idx + 1));
+                        pill.className = 'task-pill is-clickable';
                         let status = 'pending';
                         if (isRunActive && currentModel && model.name === currentModel) {
                             status = 'running';
-                        } else if (currentModelIndex > 0 && modelIdx < currentModelIndex) {
+                        } else if (totalTasks > 0 && doneTasks >= totalTasks) {
                             status = 'pass';
-                        } else if (!isRunActive && currentModelIndex > 0 && modelIdx <= currentModelIndex) {
-                            status = 'pass';
+                        } else if (doneTasks > 0) {
+                            status = 'running';
                         }
                         pill.dataset.status = status;
+                        pill.classList.toggle('is-selected', model.name === selectedModel);
                         const icon = document.createElement('span');
                         icon.className = 'task-dot';
 
                         const label = document.createElement('span');
                         label.textContent = model.name;
 
+                        pill.addEventListener('click', () => {
+                            const modelDefaultDataset = datasets.find((entry) => entry.model_name === model.name) || null;
+                            setNavigationSelection({
+                                followLive: false,
+                                selectedModel: model.name,
+                                selectedDatasetKey: modelDefaultDataset ? datasetEntryKey(modelDefaultDataset) : null,
+                                selectedTaskKey: modelDefaultDataset ? pickDefaultTaskKey(modelDefaultDataset, state) : null
+                            });
+                            updateDatasetTaskPills();
+                            updateDatasetDashboard();
+                            updateLastTaskCard();
+                            fetchSelectedTaskDetail(true);
+                        });
                         pill.appendChild(icon);
                         pill.appendChild(label);
                         modelsContainer.appendChild(pill);
@@ -2202,33 +2447,59 @@
 
 
                 // Datasets Overview Pills
-                const datasetsOverview = dbState.datasets_overview?.datasets || [];
                 const datasetsContainer = document.getElementById('datasetsOverviewPills');
                 if (!datasetsContainer) {
                     console.error('[updateDatasetTaskPills] Container #datasetsOverviewPills not found!');
                     return;
                 }
                 datasetsContainer.innerHTML = '';
+                const datasetsHeader = document.querySelector('#datasetsOverviewSection .pills-section-header');
+                if (datasetsHeader) {
+                    datasetsHeader.textContent = selectedModel ? `Datasets: ${selectedModel}` : 'Datasets Overview';
+                }
 
-                datasetsOverview.forEach((dataset, idx) => {
+                datasets
+                    .filter((entry) => !selectedModel || entry.model_name === selectedModel)
+                    .forEach((dataset) => {
+                    const done = Number(dataset.tasks_passed || 0) + Number(dataset.tasks_failed || 0);
+                    const total = Number(dataset.tasks_total || 0);
                     const pill = document.createElement('div');
-                    pill.className = 'task-pill';
-                    const status = dataset.status || 'pending';
-                    if (status === 'completed') pill.dataset.status = 'pass';
-                    else if (status === 'failed') pill.dataset.status = 'fail';
-                    else if (status === 'active') pill.dataset.status = 'running';
+                    pill.className = 'task-pill is-clickable';
+                    if (isRunActive && currentDatasetEntry && datasetEntryKey(currentDatasetEntry) === datasetEntryKey(dataset)) pill.dataset.status = 'running';
+                    else if (total > 0 && done >= total) pill.dataset.status = dataset.tasks_failed > 0 ? 'fail' : 'pass';
+                    else if (done > 0) pill.dataset.status = 'running';
                     else pill.dataset.status = 'pending';
+                    pill.classList.toggle('is-selected', !!selectedDatasetEntry && datasetEntryKey(selectedDatasetEntry) === datasetEntryKey(dataset));
 
                     const icon = document.createElement('span');
                     icon.className = 'task-dot';
 
                     const label = document.createElement('span');
-                    label.textContent = `${dataset.dataset_label} (${dataset.completed}/${dataset.total})`;
+                    label.textContent = `${dataset.dataset_label} (${done}/${total || dataset.tasks?.length || 0})`;
 
+                    pill.addEventListener('click', () => {
+                        setNavigationSelection({
+                            followLive: false,
+                            selectedModel: dataset.model_name,
+                            selectedDatasetKey: datasetEntryKey(dataset),
+                            selectedTaskKey: pickDefaultTaskKey(dataset, state)
+                        });
+                        updateDatasetTaskPills();
+                        updateDatasetDashboard();
+                        updateLastTaskCard();
+                        fetchSelectedTaskDetail(true);
+                    });
                     pill.appendChild(icon);
                     pill.appendChild(label);
                     datasetsContainer.appendChild(pill);
                 });
+
+                const taskHeader = document.querySelector('#currentDatasetTasksSection .pills-section-header');
+                if (taskHeader) {
+                    taskHeader.textContent = selectedDatasetEntry
+                        ? `Tasks: ${selectedDatasetEntry.dataset_label}`
+                        : 'Current Dataset Tasks';
+                }
 
             
             } catch (error) {
@@ -2256,42 +2527,17 @@
                 return;
             }
 
-            const state = dbState || latestState || {};
-            const currentModel = state.current_model || datasets[0]?.model_name || '-';
+            const selection = getResolvedSelection();
+            const state = selection.state || {};
+            const currentModel = selection.selectedModel || datasets[0]?.model_name || '-';
             const modelDatasets = datasets.filter((entry) => entry.model_name === currentModel);
-            const currentDataset = state.current_dataset || state.current_task || '';
-            const currentTask = state.current_task
-                || lastTaskPayload?.task?.task_name
-                || lastTaskPayload?.task?.dataset_label
-                || '';
-            const targetLabel = normalizeDatasetLabel(currentDataset);
-            let datasetEntry = null;
-            if (targetLabel) {
-                datasetEntry = modelDatasets.find((entry) => {
-                    return normalizeDatasetLabel(entry.dataset_label) === targetLabel
-                        || normalizeDatasetLabel(entry.dataset_id) === targetLabel;
-                });
-            }
-            
+            let datasetEntry = selection.selectedDatasetEntry;
+
             if (!datasetEntry) {
-                renderTaskGrid(null);
+                renderTaskGrid(null, null);
                 return;
             }
             const modelRunning = state && (state.status === 'running' || state.status === 'initializing');
-            const hasActiveTask = modelRunning && state.current_model === currentModel && currentTask;
-            if (!datasetEntry && hasActiveTask) {
-                datasetEntry = {
-                    type: 'in_progress',
-                    model_name: currentModel,
-                    dataset_id: currentTask,
-                    dataset_label: currentTask,
-                    completed: false,
-                    tasks: [],
-                    tasks_total: Number(state.tasks_total) || 0,
-                    tasks_passed: 0,
-                    tasks_failed: 0
-                };
-            }
             const datasetsTotal = Number(state.datasets_total) || Number(dbScope?.datasets_total) || modelDatasets.length || datasets.length || 0;
             const currentDatasetIndex = Number(state.dataset_index) || 0;
             const datasetsDoneByState = modelRunning && state.current_model === currentModel
@@ -2319,7 +2565,11 @@
                 const statusRaw = (state.status || '').toLowerCase();
                 const isRunning = statusRaw === 'running' || statusRaw === 'initializing';
                 const hasCurrentTaskInfo = state.current_model || state.current_sample_id || state.current_dialog_id;
-                const showingRunningTask = isRunning && hasCurrentTaskInfo;
+                const selectedDatasetIsCurrent = !!(
+                    selection.currentDatasetEntry
+                    && datasetEntryKey(selection.currentDatasetEntry) === datasetEntryKey(datasetEntry)
+                );
+                const showingRunningTask = isRunning && hasCurrentTaskInfo && selectedDatasetIsCurrent;
                 
                 let displayTTFT = `${avgTtftSec} s`;
                 let displayE2E = `${avgE2ESec} s`;
@@ -2438,7 +2688,7 @@
                 if (ragMetricsEvalWrap) ragMetricsEvalWrap.style.display = showEval ? 'inline' : 'none';
                 if (ragMetricsResult) ragMetricsResult.textContent = errors > 0 ? `${errors} err` : passText;
             }
-            renderTaskGrid(datasetEntry);
+            renderTaskGrid(datasetEntry, selection.selectedTaskKey);
             
             // Update waiting indicator
             const waitingEl = document.getElementById('waitingIndicator');
@@ -2713,6 +2963,7 @@
             responseHeader.textContent = 'Response';
             
             // "last task" pill
+            lastTaskPill.textContent = 'last task';
             lastTaskPill.style.display = 'inline-block';
         }
 
@@ -2833,6 +3084,65 @@
             lastTaskPill.style.display = 'none';
         }
 
+        function formatTaskPayloadResult(task) {
+            const status = String(task?.status || '').toLowerCase();
+            if (status === 'pass') {
+                if (task?.kind === 'chat') return '✓ PASS (compliant)';
+                if (task?.evaluation && task.evaluation.correct !== undefined) {
+                    return task.evaluation.correct ? '✓ PASS (correct)' : '✓ PASS';
+                }
+                return '✓ PASS';
+            }
+            if (status === 'fail') {
+                if (task?.kind === 'chat' && Array.isArray(task?.evaluation?.violations) && task.evaluation.violations.length) {
+                    return `✗ FAIL: ${task.evaluation.violations.join(', ')}`;
+                }
+                return '✗ FAIL';
+            }
+            if (status === 'error') {
+                return task?.error ? `⚠ ERROR: ${task.error}` : '⚠ ERROR';
+            }
+            return '';
+        }
+
+        function showSelectedTask(task, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill) {
+            const status = String(task?.status || 'pending').toLowerCase();
+            const statusMap = {
+                pass: { text: 'PASS', color: '#10b981' },
+                fail: { text: 'FAIL', color: '#ef4444' },
+                error: { text: 'ERROR', color: '#ef4444' },
+                pending: { text: 'PENDING', color: mutedTextColor },
+                active: { text: 'ACTIVE', color: '#f59e0b' },
+                running: { text: 'RUNNING', color: '#f59e0b' },
+                initializing: { text: 'INITIALIZING', color: '#f59e0b' }
+            };
+            const statusInfo = statusMap[status] || { text: status.toUpperCase() || '--', color: mutedTextColor };
+            statusEl.textContent = statusInfo.text;
+            statusEl.style.color = statusInfo.color;
+            statusEl.style.opacity = 1;
+            statusEl.style.transition = '';
+
+            const payload = task?.payload || {};
+            const prompt = payload.prompt || payload.user_text || payload.prompt_preview || payload.user_preview || '';
+            const response = payload.response || payload.response_preview || '';
+            promptEl.textContent = String(prompt || '').replace(/\n/g, ' ');
+            promptEl.style.opacity = 1;
+            responseEl.textContent = response || '';
+            responseEl.style.opacity = 1;
+
+            const responseHeader = responseSection.querySelector('.task-section-title');
+            responseHeader.textContent = 'Response';
+
+            resultEl.textContent = formatTaskPayloadResult(task);
+            resultEl.style.opacity = 1;
+            resultEl.style.transition = '';
+
+            lastTaskPill.textContent = 'selected task';
+            lastTaskPill.style.display = 'inline-block';
+            lastTaskPill.style.opacity = 1;
+            updateWorkflowPills();
+        }
+
         function updateLastTaskCard() {
             const promptEl = document.getElementById('lastTaskPrompt');
             const responseEl = document.getElementById('lastTaskResponse');
@@ -2851,6 +3161,33 @@
             // Display priority logic
             const now = Date.now();
             const benchmarkIsRunning = (state.status || '').toLowerCase() === 'running';
+            const selection = getResolvedSelection();
+            const isManualSelection = !navigationState.followLive && !!selection.selectedTask;
+            const currentKey = currentTaskSelectionKey(state);
+            const selectionMatchesCurrent = !!(selection.selectedTaskKey && currentKey && selection.selectedTaskKey === currentKey);
+
+            if (isManualSelection) {
+                if (task_done && selectionMatchesCurrent && (now - task_done.display_started_at) < 3000) {
+                    showDoneTask(task_done, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill);
+                    return;
+                }
+                if (selectionMatchesCurrent && task_current) {
+                    showCurrentTask(task_current, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill);
+                    return;
+                }
+                if (selectionMatchesCurrent && task_evaluating) {
+                    showEvaluating(task_evaluating, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill);
+                    return;
+                }
+                if (selectedTaskPayload?.task) {
+                    showSelectedTask(selectedTaskPayload.task, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill);
+                    return;
+                }
+                if (selection.selectedTask) {
+                    showSelectedTask(selection.selectedTask, promptEl, responseEl, responseSection, resultEl, statusEl, lastTaskPill);
+                    return;
+                }
+            }
             
             // Priority 1: Show completed task for 3 seconds
             if (task_done && (now - task_done.display_started_at) < 3000) {
@@ -2913,12 +3250,6 @@
             const params = new URLSearchParams();
             const runId = dbState?.run_id;
             if (runId) params.set('run_id', runId);
-            if (dbState?.current_model) {
-                params.set('model', dbState?.current_model);
-            }
-            if (dbRunInfo?.started_at || latestState?.start_time) {
-                params.set('since', dbRunInfo?.started_at || latestState?.start_time);
-            }
             const url = `/api/benchmark/datasets${params.toString() ? `?${params}` : ''}`;
             try {
                 const resp = await fetch(url, {
@@ -2932,6 +3263,50 @@
                 updateDatasetDashboard();
             } catch (err) {
                 console.error('fetchDatasetData error:', err);
+            }
+        }
+
+        async function fetchSelectedTaskDetail(force = false) {
+            const selection = getResolvedSelection();
+            const task = selection.selectedTask;
+            if (!task || navigationState.followLive || !dbState?.run_id) {
+                selectedTaskPayload = null;
+                return;
+            }
+            const now = Date.now();
+            if (!force && now - selectedTaskFetch < 2500) return;
+            selectedTaskFetch = now;
+            const params = new URLSearchParams();
+            params.set('run_id', dbState.run_id);
+            params.set('model', selection.selectedModel || task.model_name || '');
+            params.set('dataset', selection.selectedDatasetEntry?.dataset_id || '');
+            if (task.sample_id) params.set('sample_id', task.sample_id);
+            else if (task.dialog_id) {
+                params.set('dialog_id', task.dialog_id);
+                params.set('turn_index', String(task.turn_index ?? 0));
+            } else if (task.task_name) {
+                params.set('task_name', task.task_name);
+            } else {
+                selectedTaskPayload = null;
+                return;
+            }
+            const url = `/api/benchmark/task_detail?${params.toString()}`;
+            try {
+                const resp = await fetch(url, {
+                    cache: 'no-store',
+                    headers: monitorAuthHeaders(),
+                    credentials: 'same-origin'
+                });
+                const payload = await resp.json();
+                if (!resp.ok || !payload.ok) {
+                    selectedTaskPayload = null;
+                    return;
+                }
+                selectedTaskPayload = payload;
+                updateLastTaskCard();
+                updateLiveKPIs();
+            } catch (err) {
+                console.error('fetchSelectedTaskDetail error:', err);
             }
         }
 
@@ -3023,6 +3398,7 @@
                     progressResetSeen = false;
                     lastShownDoneTaskId = null; // Reset on new run
                     lastShownDoneSampleId = null; // Reset on new run
+                    setNavigationSelection({ followLive: true });
                     resetCharts();
                     resetDatasetDashboard();
                     fetchDatasetData(true);
@@ -3086,7 +3462,7 @@
         });
 
         async function pollGpuUtilization() {
-            if (!allowGpuFallback || gpuSource === 'state') return;
+            if (!allowGpuFallback || gpuSource === 'state' || document.hidden) return;
             try {
                 const resp = await fetch('/api/gpu', {
                     headers: monitorAuthHeaders(),
@@ -3101,7 +3477,7 @@
         }
 
         async function pollServerTemperature() {
-            if (!allowTempFallback) return;
+            if (!allowTempFallback || !allowGpuFallback || document.hidden) return;
             try {
                 const resp = await fetch('/api/temperature', {
                     headers: monitorAuthHeaders(),
@@ -3198,8 +3574,6 @@
                     runDescEl.textContent = `${modelsCount} model${modelsCount !== 1 ? 's' : ''}, ${datasetsCount} dataset${datasetsCount !== 1 ? 's' : ''}, ${tasksCount} task${tasksCount !== 1 ? 's' : ''}`;
                 }
 
-                allowGpuFallback = statusRaw === 'running' || statusRaw === 'initializing';
-                
                 // Color status
                 if (statusEl) {
                     if (statusBase === 'RUNNING') statusEl.style.color = 'var(--monitor-accent)';
@@ -3215,6 +3589,7 @@
                 
                 // Determine if benchmark is actively running (not stale)
                 const isActivelyRunning = (statusRaw === 'running' || statusRaw === 'initializing') && !isStale;
+                allowGpuFallback = isActivelyRunning;
                 
                 if (statusRaw === 'completed' || statusRaw === 'failed') {
                     if (!benchmarkEndMs) {
@@ -3352,6 +3727,7 @@
         setInterval(() => {
             fetchDatasetData(false);
             fetchLastTask(false);
+            fetchSelectedTaskDetail(false);
         }, 3000);
 
         // Initial call
